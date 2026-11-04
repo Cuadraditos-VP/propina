@@ -185,17 +185,25 @@ td.pos { color: var(--teal); }
 td.neg { color: var(--rust); }
 .table-scroll { overflow-x: auto; }
 
-.entry-row { display: flex; gap: 0.6rem; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
-.entry-row:last-child { border-bottom: none; }
-.entry-row .d { width: 90px; flex-shrink: 0; color: var(--ink-mute); }
-.entry-row input { flex: 1; min-width: 0; }
+.entry-row { display: flex; gap: 0.75rem; align-items: baseline; padding: 1px 0; font-size: 14px; }
+.entry-row .d { width: 80px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.entry-row .d .n { display: inline-block; width: 1.4em; margin-right: 0.5em; text-align: right; color: var(--ink-mute); }
+.entry-row .d .f { color: var(--ink); font-weight: 500; }
+.entry-row input {
+  flex: 1; min-width: 0;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  padding: 3px 6px; border: none; border-radius: 5px;
+  background: transparent; color: var(--ink);
+}
+.entry-row input::placeholder { color: var(--line-strong); }
+.entry-row input:hover { background: var(--bg); }
+.entry-row input:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .entry-row .rm { padding: 4px 8px; font-size: 12px; }
 /* en pantallas anchas (PC), los días van en tres columnas:
    se llenan de arriba a abajo, de izquierda a derecha */
 @media (min-width: 760px) {
   #entries { columns: 3; column-gap: 1.75rem; }
   #entries .entry-row { break-inside: avoid; }
-  #entries .entry-row:last-child { border-bottom: 1px solid var(--line); }
 }
 
 .note { font-size: 13px; color: var(--ink-mute); margin-top: 0.75rem; }
@@ -717,7 +725,7 @@ function renderEntries() {
     row.className = 'entry-row';
     const val = currentMonth.dias[i];
     row.innerHTML =
-      '<span class="d">' + (i + 1) + ' · ' + entryDateLabel(year, month, i) + '</span>' +
+      '<span class="d"><span class="n">' + (i + 1) + '</span><span class="f">' + entryDateLabel(year, month, i) + '</span></span>' +
       '<input type="text" inputmode="numeric" data-day="' + i + '" value="' + (val === null || val === undefined ? '' : formatARSInput(val)) + '" placeholder="$ 0">';
     el.appendChild(row);
     attachCurrencyFormatting(row.querySelector('input'));
@@ -750,7 +758,7 @@ document.getElementById('add-day').addEventListener('click', () => {
     const row = document.createElement('div');
     row.className = 'entry-row';
     row.innerHTML =
-      '<span class="d">' + (i + 1) + ' · ' + entryDateLabel(year, month, i) + '</span>' +
+      '<span class="d"><span class="n">' + (i + 1) + '</span><span class="f">' + entryDateLabel(year, month, i) + '</span></span>' +
       '<input type="text" inputmode="numeric" data-day="' + i + '" value="" placeholder="$ 0">';
     el.appendChild(row);
     attachCurrencyFormatting(row.querySelector('input'));
