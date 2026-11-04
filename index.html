@@ -185,17 +185,26 @@ td.pos { color: var(--teal); }
 td.neg { color: var(--rust); }
 .table-scroll { overflow-x: auto; }
 
-.entry-row { display: flex; gap: 0.6rem; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
-.entry-row:last-child { border-bottom: none; }
-.entry-row .d { width: 90px; flex-shrink: 0; color: var(--ink-mute); }
-.entry-row input { flex: 1; min-width: 0; }
+.entry-row { display: flex; gap: 0.75rem; align-items: baseline; padding: 3px 4px; border-bottom: 1px solid #ECEAE3; font-size: 14px; }
+.entry-row .d { width: 56px; flex-shrink: 0; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+/* días del mes anterior (del 26 a fin de mes): franja dorada suave */
+.entry-row.prev { background: #F8F2E2; }
+.entry-row.prev .d { color: var(--gold); }
+.entry-row input {
+  flex: 1; min-width: 0;
+  font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
+  padding: 3px 6px; border: none; border-radius: 5px;
+  background: transparent; color: var(--ink);
+}
+.entry-row input::placeholder { color: var(--line-strong); }
+.entry-row input:hover { background: var(--bg); }
+.entry-row input:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .entry-row .rm { padding: 4px 8px; font-size: 12px; }
 /* en pantallas anchas (PC), los días van en tres columnas:
    se llenan de arriba a abajo, de izquierda a derecha */
 @media (min-width: 760px) {
   #entries { columns: 3; column-gap: 1.75rem; }
   #entries .entry-row { break-inside: avoid; }
-  #entries .entry-row:last-child { border-bottom: 1px solid var(--line); }
 }
 
 .note { font-size: 13px; color: var(--ink-mute); margin-top: 0.75rem; }
@@ -704,6 +713,17 @@ function fmtMillions(v) {
   return String(Math.round(v));
 }
 
+// renglón de un día; los días del mes anterior (26 en adelante) se marcan con .prev
+function entryRow(year, month, i, val) {
+  const row = document.createElement('div');
+  row.className = 'entry-row' + (cycleDate(year, month, i).getDate() >= 26 ? ' prev' : '');
+  row.innerHTML =
+    '<span class="d">' + entryDateLabel(year, month, i) + '</span>' +
+    '<input type="text" inputmode="numeric" data-day="' + i + '" value="' + (val === null || val === undefined ? '' : formatARSInput(val)) + '" placeholder="$ 0">';
+  attachCurrencyFormatting(row.querySelector('input'));
+  return row;
+}
+
 function renderEntries() {
   const el = document.getElementById('entries');
   el.innerHTML = '';
@@ -713,14 +733,7 @@ function renderEntries() {
   const showUpTo = Math.min(maxDay0, lastFilled + 3);
 
   for (let i = 0; i <= showUpTo; i++) {
-    const row = document.createElement('div');
-    row.className = 'entry-row';
-    const val = currentMonth.dias[i];
-    row.innerHTML =
-      '<span class="d">' + (i + 1) + ' · ' + entryDateLabel(year, month, i) + '</span>' +
-      '<input type="text" inputmode="numeric" data-day="' + i + '" value="' + (val === null || val === undefined ? '' : formatARSInput(val)) + '" placeholder="$ 0">';
-    el.appendChild(row);
-    attachCurrencyFormatting(row.querySelector('input'));
+    el.appendChild(entryRow(year, month, i, currentMonth.dias[i]));
   }
 
   const addBtn = document.getElementById('add-day');
@@ -747,13 +760,7 @@ document.getElementById('add-day').addEventListener('click', () => {
   if (lastFilled < maxDay0) {
     const el = document.getElementById('entries');
     const i = lastFilled + 1;
-    const row = document.createElement('div');
-    row.className = 'entry-row';
-    row.innerHTML =
-      '<span class="d">' + (i + 1) + ' · ' + entryDateLabel(year, month, i) + '</span>' +
-      '<input type="text" inputmode="numeric" data-day="' + i + '" value="" placeholder="$ 0">';
-    el.appendChild(row);
-    attachCurrencyFormatting(row.querySelector('input'));
+    el.appendChild(entryRow(year, month, i, null));
   }
 });
 
