@@ -186,12 +186,10 @@ td.neg { color: var(--rust); }
 .table-scroll { overflow-x: auto; }
 
 .entry-row { display: flex; gap: 0.75rem; align-items: baseline; padding: 3px 4px; border-bottom: 1px solid #ECEAE3; font-size: 14px; }
-.entry-row .d { width: 80px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.entry-row .d .n { display: inline-block; width: 1.4em; margin-right: 0.5em; text-align: right; color: var(--ink-mute); }
-.entry-row .d .f { color: var(--ink-soft); }
+.entry-row .d { width: 56px; flex-shrink: 0; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 /* días del mes anterior (del 26 a fin de mes): franja dorada suave */
 .entry-row.prev { background: #F8F2E2; }
-.entry-row.prev .d .f { color: var(--gold); }
+.entry-row.prev .d { color: var(--gold); }
 .entry-row input {
   flex: 1; min-width: 0;
   font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums;
@@ -720,7 +718,7 @@ function entryRow(year, month, i, val) {
   const row = document.createElement('div');
   row.className = 'entry-row' + (cycleDate(year, month, i).getDate() >= 26 ? ' prev' : '');
   row.innerHTML =
-    '<span class="d"><span class="n">' + (i + 1) + '</span><span class="f">' + entryDateLabel(year, month, i) + '</span></span>' +
+    '<span class="d">' + entryDateLabel(year, month, i) + '</span>' +
     '<input type="text" inputmode="numeric" data-day="' + i + '" value="' + (val === null || val === undefined ? '' : formatARSInput(val)) + '" placeholder="$ 0">';
   attachCurrencyFormatting(row.querySelector('input'));
   return row;
