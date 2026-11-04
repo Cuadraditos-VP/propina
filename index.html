@@ -100,8 +100,7 @@ header p { color: var(--ink-soft); margin: 0; max-width: 60ch; }
 .panel details .sub,
 .panel details .table-scroll,
 .panel details .controls,
-.panel details .chart-wrap,
-.panel details .note#backtest-conclusion {
+.panel details .chart-wrap {
   margin-top: 1rem;
 }
 .panel details .legend { margin-top: 0.5rem; }
@@ -210,6 +209,9 @@ td.neg { color: var(--rust); }
 
 .note { font-size: 13px; color: var(--ink-mute); margin-top: 0.75rem; }
 .foot { text-align: center; color: var(--ink-mute); font-size: 12.5px; margin-top: 2rem; }
+.backup { display: flex; justify-content: center; gap: 0.6rem; margin-top: 0.75rem; }
+.backup .wa-btn { width: 34px; height: 34px; }
+.backup .wa-btn svg { width: 17px; height: 17px; }
 </style>
 </head>
 <body>
@@ -218,7 +220,6 @@ td.neg { color: var(--rust); }
   <header>
     <p class="eyebrow">Caja de empleados</p>
     <h1>Proyección de recaudación</h1>
-    <p>Compara lo recaudado este mes contra el mismo mes del año pasado, día por día, para estimar el TOTAL antes de que cierre el mes.</p>
   </header>
 
   <div class="panel" id="panel-mes">
@@ -275,8 +276,7 @@ td.neg { color: var(--rust); }
   </div>
 
   <div class="panel">
-    <h2>Cargar días</h2>
-    <p class="sub">Acumulado recaudado hasta cada día del mes (no el monto del día, el total corrido).</p>
+    <h2 style="margin-bottom: 1rem;">Cargar días</h2>
     <div id="entries"></div>
     <div id="cierre-mes" style="display:none; margin-top: 1rem; padding: 1rem; background: var(--gold-bg); border-radius: 8px;"></div>
     <div class="controls" style="margin-top: 1rem; margin-bottom: 0;">
@@ -284,38 +284,6 @@ td.neg { color: var(--rust); }
       <button class="primary" id="save-days">Guardar</button>
       <span class="note" id="save-note" style="margin: 0;"></span>
     </div>
-  </div>
-
-  <div class="panel">
-    <details>
-      <summary><h2 style="display:inline;">¿Por qué promediar varios días?</h2></summary>
-      <p class="sub">Backtest sobre los 8 meses cerrados que ya tienen año de comparación (enero a agosto 2026): qué hubiera proyectado cada método el último día con datos, contra el TOTAL real que terminó cerrando el mes.</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr><th>Mes</th><th>Real</th><th>Método anterior</th><th>Error</th><th>Promedio 3 días</th><th>Error</th></tr>
-          </thead>
-          <tbody id="backtest-body"></tbody>
-          <tfoot>
-            <tr style="font-weight: 500;"><td>Error promedio</td><td></td><td></td><td id="bt-err-old"></td><td></td><td id="bt-err-new"></td></tr>
-          </tfoot>
-        </table>
-      </div>
-      <p class="note" id="backtest-conclusion"></p>
-    </details>
-  </div>
-
-  <div class="panel">
-    <details>
-      <summary><h2 style="display:inline;">Copia de seguridad</h2></summary>
-      <p class="sub">Los datos quedan guardados solo en este navegador. Exportá un archivo JSON de vez en cuando para tener un respaldo, o para pasar los datos a otra compu o celular.</p>
-      <div class="controls" style="margin: 0;">
-        <button id="export-json">⬇ Exportar JSON</button>
-        <button id="import-json-btn">⬆ Importar JSON</button>
-        <input type="file" id="import-json-file" accept="application/json,.json" style="display:none;">
-        <span class="note" id="json-note" style="margin: 0;"></span>
-      </div>
-    </details>
   </div>
 
   <div class="panel">
@@ -332,6 +300,18 @@ td.neg { color: var(--rust); }
   </div>
 
   <p class="foot" id="sync-estado">Los datos se guardan solo en este navegador.</p>
+
+  <!-- copia de seguridad: exportar / importar los datos como archivo JSON -->
+  <div class="backup">
+    <button id="export-json" class="wa-btn" type="button" title="Exportar copia de seguridad" aria-label="Exportar copia de seguridad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+    </button>
+    <button id="import-json-btn" class="wa-btn" type="button" title="Importar copia de seguridad" aria-label="Importar copia de seguridad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+    </button>
+    <input type="file" id="import-json-file" accept="application/json,.json" style="display:none;">
+  </div>
+  <p class="note" id="json-note" style="text-align: center; margin: 0.4rem 0 0;"></p>
 </div>
 
 <script>
@@ -512,7 +492,6 @@ function iniciarNube() {
     if (!editandoAhora()) {
       render();
     }
-    buildBacktest();
     buildHistoria();
     setSyncEstado('Sincronizado en todos tus aparatos', 'var(--teal)');
   }, () => {
@@ -789,7 +768,6 @@ document.getElementById('save-days').addEventListener('click', () => {
   const note = document.getElementById('save-note');
   note.textContent = cerrado ? 'Mes cerrado y guardado.' : 'Guardado.';
   render();
-  buildBacktest();
   buildHistoria();
   setTimeout(() => { note.textContent = ''; }, 2500);
 });
@@ -853,44 +831,6 @@ document.getElementById('wa-share').addEventListener('click', async () => {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 });
-
-function buildBacktest() {
-  const body = document.getElementById('backtest-body');
-  body.innerHTML = '';
-  let errOldSum = 0, errNewSum = 0, n = 0;
-  for (let idx = 12; idx < historial.length - 1; idx++) {
-    const month = historial[idx];
-    const yearAgo = historial[idx - 12];
-    if (!month.total || !yearAgo.total) continue;
-    const lastDay = lastFilledDay(month.dias);
-    if (lastDay < 0) continue;
-    const resOld = proyectar(month.dias, yearAgo.dias, yearAgo.total, 1);
-    const resNew = proyectar(month.dias, yearAgo.dias, yearAgo.total, 3);
-    if (!resOld.esperado || !resNew.esperado) continue;
-    const errOld = (resOld.esperado - month.total) / month.total;
-    const errNew = (resNew.esperado - month.total) / month.total;
-    errOldSum += Math.abs(errOld);
-    errNewSum += Math.abs(errNew);
-    n++;
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + mesLabel(month.fecha) + '</td>' +
-      '<td>' + fmtMoney(month.total) + '</td>' +
-      '<td>' + fmtMoney(resOld.esperado) + '</td>' +
-      '<td class="' + (Math.abs(errOld) < Math.abs(errNew) ? 'pos' : 'neg') + '">' + fmtPct(errOld) + '</td>' +
-      '<td>' + fmtMoney(resNew.esperado) + '</td>' +
-      '<td class="' + (Math.abs(errNew) <= Math.abs(errOld) ? 'pos' : 'neg') + '">' + fmtPct(errNew) + '</td>';
-    body.appendChild(tr);
-  }
-  if (n > 0) {
-    document.getElementById('bt-err-old').textContent = fmtPct(errOldSum / n).replace('+', '');
-    document.getElementById('bt-err-new').textContent = fmtPct(errNewSum / n).replace('+', '');
-    const mejora = (errOldSum / n) - (errNewSum / n);
-    document.getElementById('backtest-conclusion').textContent = mejora > 0
-      ? 'Promediar 3 días redujo el error promedio en ' + (mejora * 100).toFixed(1) + ' puntos frente a usar solo el último día.'
-      : 'En este historial, usar solo el último día dio, en promedio, un error similar o menor al de promediar 3 días.';
-  }
-}
 
 function buildHistoria() {
   const body = document.getElementById('historia-body');
@@ -957,7 +897,6 @@ document.getElementById('import-json-file').addEventListener('change', (ev) => {
     saveHistorial();
     refreshCurrentRefs();
     render();
-    buildBacktest();
     buildHistoria();
     note.textContent = 'Datos importados.';
     ev.target.value = '';
@@ -971,7 +910,6 @@ if (ventanaGuardada && ['1', '3', '5', '7', '10', '15', '20', 'all'].includes(ve
   document.getElementById('ventana').value = ventanaGuardada;
 }
 
-buildBacktest();
 buildHistoria();
 render();
 iniciarNube();
