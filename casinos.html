@@ -309,7 +309,7 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
         <tbody id="entries"></tbody>
       </table>
     </div>
-    <p class="note" style="margin: 0.6rem 0 0;">Tocá el día para marcarlo como fin de semana o víspera de feriado. Se guarda solo.</p>
+    <p class="note" style="margin: 0.6rem 0 0;">Podés copiar varias filas del Excel y pegarlas de una en la celda del primer día. Tocá el día para marcarlo como fin de semana o víspera de feriado. Se guarda solo.</p>
     <div class="cierre">
       <label for="cierre-input">Resultado final del mes (lo que cobra cada empleado)</label>
       <input type="text" inputmode="numeric" id="cierre-input" placeholder="$ 0">
@@ -632,6 +632,7 @@ function renderTabla() {
       renderCalculos();
     });
     inp.addEventListener('change', () => { guardar(); avisarGuardado(); });
+    inp.addEventListener('paste', ev => pegarDesdeExcel(ev, inp));
   });
   body.querySelectorAll('.dchip').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -648,6 +649,73 @@ function renderTabla() {
   if (document.activeElement !== cierre) cierre.value = formatARSInput(m.total);
   const infl = document.getElementById('inflacion');
   if (document.activeElement !== infl) infl.value = formatPercentInput(m.inflacion);
+}
+
+// -- pegar desde Excel: al copiar celdas, Excel las pasa como texto con
+// tabulaciones entre columnas y un renglón por fila --
+function numeroDeCelda(txt) {
+  let t = String(txt).replace(/[$\s ]/g, '');
+  if (t === '' || t === '-') return null;
+  t = t.replace(/[.,]\d{1,2}$/, ''); // centavos ("9.478.150,00")
+  if (!/^\d[\d.,]*$/.test(t)) return undefined; // no es un número (texto, encabezado)
+  return parseInt(t.replace(/[.,]/g, ''), 10);
+}
+
+function pegarDesdeExcel(ev, inp) {
+  const texto = (ev.clipboardData || window.clipboardData).getData('text');
+  if (!texto || !/[\t\n]/.test(texto.trim())) return; // un solo valor: pegado normal
+  ev.preventDefault();
+
+  const m = mesSel();
+  const n = cycleDays(m.fecha);
+  const filas = texto.replace(/\r/g, '').replace(/\n+$/, '').split('\n')
+    .map(f => f.split('\t').map(numeroDeCelda))
+    // fuera los encabezados (renglones con texto y sin números); los renglones
+    // vacíos se dejan, así un día sin dato no corre los siguientes
+    .filter(f => f.some(v => typeof v === 'number') || f.every(v => v === null));
+  if (!filas.some(f => f.some(v => typeof v === 'number'))) return;
+
+  // ¿la primera columna es el número de día (26, 27, … 1, 2, …)?
+  const esDia = v => typeof v === 'number' && v >= 1 && v <= 31;
+  const conNumeros = filas.filter(f => f.some(v => typeof v === 'number'));
+  const conDia = conNumeros.length > 1 && conNumeros.every(f => esDia(f[0])) &&
+    filas.some(f => f.slice(1).some(v => typeof v === 'number' && v > 31));
+  const diaAIndice = {};
+  for (let i = 0; i < n; i++) diaAIndice[cycleDate(m.fecha, i).getDate()] = i;
+
+  let i = parseInt(inp.dataset.day, 10);
+  let pegados = 0;
+  filas.forEach(f => {
+    let fila = f;
+    if (conDia) {
+      if (!esDia(f[0]) || diaAIndice[f[0]] === undefined) return;
+      i = diaAIndice[f[0]];
+      fila = f.slice(1);
+    }
+    if (i >= n) return;
+    // 1 columna: el casino de la celda donde se pegó.
+    // 2 columnas: Central y Tigre.
+    // 4 o más (como la planilla: diario, acumulado, diario, acumulado…):
+    // Central es la 1.ª y Tigre la 3.ª.
+    let c, t;
+    if (fila.length === 1) {
+      if (inp.dataset.casino === 'central') c = fila[0]; else t = fila[0];
+    } else if (fila.length === 2 || fila.length === 3) {
+      if (inp.dataset.casino === 'tigre') { t = fila[0]; } else { c = fila[0]; t = fila[1]; }
+    } else {
+      c = fila[0]; t = fila[2];
+    }
+    let algo = false;
+    if (typeof c === 'number') { m.central[i] = c; algo = true; }
+    if (typeof t === 'number') { m.tigre[i] = t; algo = true; }
+    if (algo) pegados++;
+    i++;
+  });
+
+  guardar();
+  renderTabla();
+  renderCalculos();
+  avisarGuardado(pegados === 1 ? 'Se pegó 1 día.' : 'Se pegaron ' + pegados + ' días.');
 }
 
 let notaTimer = null;
