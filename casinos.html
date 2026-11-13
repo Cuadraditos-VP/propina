@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recaudación por casino</title>
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F6E5C">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F1F0EC;
+  --panel: #FFFFFF;
+  --panel-2: #E8E6DF;
+  --ink: #1F241F;
+  --ink-soft: #5B5E56;
+  --ink-mute: #8B8E85;
+  --line: #D8D6CD;
+  --line-strong: #B9B6AA;
+  --teal: #2F6E5C;
+  --teal-bg: #E2EDE7;
+  --rust: #A5482F;
+  --rust-bg: #F1E3DD;
+  --gold: #93701F;
+  --gold-bg: #F1E7CE;
+  /* colores de la planilla para el mejor / peor día de cada casino */
+  --top: #CFF2DC;
+  --top-1: #2FC45F;
+  --bot: #F8D5BE;
+  --bot-1: #F0A77A;
+  --radius: 10px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* Colores fijos: el tablero siempre se ve igual, sin importar si el
+   celular o la compu están en modo oscuro. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+header { margin-bottom: 1.5rem; }
+header .eyebrow { font-size: 13px; color: var(--ink-mute); margin: 0 0 0.35rem; }
+header h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: clamp(28px, 5vw, 38px);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.panel h2 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 19px;
+  margin: 0 0 0.25rem;
+}
+.panel .sub { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 1.25rem; }
+.panel-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; }
+.panel-header-row .sub { margin-bottom: 0; }
+
+.mes-nav { display: flex; align-items: center; gap: 0.4rem; }
+.mes-nav h2 { margin: 0; min-width: 0; }
+.mes-nav button { width: 32px; height: 32px; padding: 0; border-radius: 999px; font-size: 16px; line-height: 1; color: var(--ink-soft); }
+.mes-nav button:disabled { opacity: 0.35; cursor: default; }
+
+.panel details summary { cursor: pointer; list-style: none; user-select: none; }
+.panel details summary::-webkit-details-marker { display: none; }
+.panel details summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+  font-size: 14px;
+}
+.panel details[open] summary::before { transform: rotate(90deg); }
+.panel details summary h2 { display: inline; }
+.panel details .table-scroll, .panel details .chart-wrap { margin-top: 1rem; }
+
+.hero-row { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end; margin-bottom: 1.25rem; }
+.hero-num { flex: 1 1 200px; min-width: 170px; }
+.hero-num .label { font-size: 13px; color: var(--ink-mute); margin-bottom: 0.2rem; }
+.hero-num .value {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: clamp(30px, 5vw, 42px);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
+}
+.hero-num .band { font-size: 13.5px; color: var(--ink-soft); margin-top: 0.25rem; }
+.hero-num-chica .value { font-size: clamp(20px, 3.2vw, 24px); }
+
+.wa-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel-2); color: var(--ink-soft);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  width: 38px; height: 38px; padding: 0; cursor: pointer; flex-shrink: 0;
+}
+.wa-btn:hover { background: var(--line); color: var(--ink); }
+.wa-btn svg { width: 19px; height: 19px; flex-shrink: 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0 1.5rem; align-items: center; }
+.controls label { font-size: 13.5px; color: var(--ink-soft); }
+select, input[type="text"] {
+  font-family: inherit; font-size: 14px;
+  padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel); color: var(--ink);
+}
+button {
+  font-family: inherit; font-size: 14px;
+  padding: 8px 14px; border-radius: 7px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel-2); color: var(--ink); cursor: pointer;
+}
+button:hover { border-color: var(--ink-mute); }
+
+svg text { font-family: 'Inter', system-ui, sans-serif; }
+.chart-wrap { width: 100%; overflow-x: auto; }
+.legend { display: flex; gap: 1.25rem; font-size: 13px; color: var(--ink-soft); margin-top: 0.5rem; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-mute); font-weight: 500; font-size: 12.5px; }
+tr:last-child td { border-bottom: none; }
+td.pos { color: var(--teal); }
+td.neg { color: var(--rust); }
+.table-scroll { overflow-x: auto; }
+
+/* ---- tabla de carga, como la planilla ---- */
+table.carga th { text-align: center; padding: 4px 6px; border-bottom: 1px solid var(--line-strong); color: var(--ink-soft); }
+table.carga tr.head-mob { display: none; }
+table.carga th.grupo { font-weight: 600; color: var(--ink); font-size: 12.5px; letter-spacing: 0.04em; }
+table.carga td { padding: 1px 6px; background: #F8F2E2; border-bottom: 1px solid #E8DCBC; text-align: right; }
+/* días del mes anterior (del 26 a fin de mes): franja verde suave */
+table.carga tr.prev td { background: var(--teal-bg); border-bottom-color: #C9DDD2; }
+table.carga td.d { text-align: left; padding-left: 2px; }
+table.carga td.calc { color: var(--ink-soft); }
+table.carga td.tot { font-weight: 600; }
+table.carga td.pct { font-size: 12px; }
+table.carga td.in { padding: 1px 2px; }
+table.carga td.in.top   { background: var(--top); }
+table.carga td.in.bot   { background: var(--bot); }
+table.carga td.in.top-1 { background: var(--top-1); }
+table.carga td.in.bot-1 { background: var(--bot-1); }
+table.carga td.in.top-1 input, table.carga td.in.bot-1 input { font-weight: 600; }
+table.carga input {
+  width: 100%; min-width: 88px;
+  font-family: inherit; font-size: 13.5px; font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 3px 5px; border: none; border-radius: 5px;
+  background: transparent; color: var(--ink);
+}
+table.carga input::placeholder { color: var(--line-strong); }
+table.carga input:hover { background: rgba(255,255,255,0.55); }
+table.carga input:focus { outline: none; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* botón del día: tocándolo se marca como fin de semana / víspera de feriado */
+.dchip {
+  display: inline-flex; gap: 5px; align-items: baseline;
+  padding: 2px 7px; border-radius: 999px;
+  border: 1px solid transparent; background: transparent;
+  font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+.dchip .wd { font-size: 11px; color: var(--ink-mute); width: 1.4em; text-align: left; }
+.dchip.finde { background: var(--gold-bg); border-color: #DCC891; color: var(--gold); font-weight: 600; }
+.dchip.finde .wd { color: var(--gold); }
+/* en el celular se ocultan los acumulados de cada casino */
+@media (max-width: 680px) {
+  table.carga .acum-c, table.carga tr.head-desk { display: none; }
+  table.carga tr.head-mob { display: table-row; }
+  table.carga, table.carga input { font-size: 13px; }
+  table.carga input { min-width: 88px; padding: 3px 2px; }
+  table.carga td { padding: 1px 3px; }
+}
+@media (max-width: 520px) {
+  table.carga .pct { display: none; }
+  .dchip { padding: 2px 4px; gap: 3px; }
+  table.carga td { padding: 1px 2px; }
+  table.carga td.tot { font-size: 12.5px; }
+  .wrap { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .panel { padding: 1.1rem 0.85rem; }
+}
+
+.cierre { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-top: 1rem; padding: 0.9rem 1rem; background: var(--gold-bg); border-radius: 8px; }
+.cierre label { font-size: 13.5px; color: var(--ink-soft); }
+.cierre input { width: 160px; }
+
+.note { font-size: 13px; color: var(--ink-mute); }
+
+/* gráfico de torta Central vs. Tigre */
+.pizza { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.25rem; padding: 0.9rem 1rem; background: var(--bg); border-radius: 8px; }
+.pizza svg { width: 104px; height: 104px; flex-shrink: 0; }
+.pizza .titulo { font-size: 13px; color: var(--ink-mute); margin-bottom: 0.35rem; }
+.pizza > div { min-width: 0; }
+.pizza .fila { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 14px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.pizza .fila + .fila { margin-top: 0.45rem; }
+.pizza .punto { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; margin-top: 0.3em; }
+.pizza .pct-grande { font-weight: 600; margin-right: 0.3rem; }
+.pizza .monto { color: var(--ink-soft); font-size: 13px; }
+@media (max-width: 520px) {
+  .pizza { gap: 0.9rem; padding: 0.8rem; }
+  .pizza svg { width: 84px; height: 84px; }
+}
+.foot { text-align: center; color: var(--ink-mute); font-size: 12.5px; margin-top: 2rem; }
+.backup { display: flex; justify-content: center; gap: 0.6rem; margin-top: 0.75rem; }
+.backup .wa-btn { width: 34px; height: 34px; }
+.backup .wa-btn svg { width: 17px; height: 17px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Caja de empleados · Central y Tigre</p>
+    <h1>Recaudación por casino</h1>
+  </header>
+
+  <div class="panel" id="panel-mes">
+    <div class="panel-header-row">
+      <div>
+        <div class="mes-nav">
+          <button type="button" id="mes-ant" aria-label="Mes anterior">‹</button>
+          <h2 id="mes-titulo">—</h2>
+          <button type="button" id="mes-sig" aria-label="Mes siguiente">›</button>
+        </div>
+        <p class="sub" id="mes-sub" style="margin-top: 0.3rem;"></p>
+      </div>
+      <button id="wa-share" class="wa-btn" type="button" title="Compartir por WhatsApp" aria-label="Compartir por WhatsApp">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.48-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.91-2.2-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z"/><path d="M12.02 2C6.5 2 2.03 6.47 2.03 12c0 1.86.5 3.6 1.38 5.1L2 22l5.02-1.38A9.95 9.95 0 0 0 12.02 22C17.53 22 22 17.53 22 12S17.53 2 12.02 2zm0 18.2c-1.66 0-3.21-.46-4.54-1.26l-.33-.2-3.12.86.84-3.04-.21-.34a8.17 8.17 0 0 1-1.27-4.4c0-4.54 3.7-8.24 8.26-8.24 4.55 0 8.24 3.7 8.24 8.24 0 4.56-3.7 8.38-8.24 8.38z"/></svg>
+      </button>
+    </div>
+
+    <div class="hero-row">
+      <div class="hero-num">
+        <div class="label">Proyección</div>
+        <div class="value" id="esperado">—</div>
+        <div class="band" id="banda"></div>
+      </div>
+      <div class="hero-num hero-num-chica">
+        <div class="label">Real vs. año anterior</div>
+        <div class="value" id="vs-anterior">—</div>
+        <div class="band" id="vs-anterior-sub"></div>
+      </div>
+    </div>
+    <div class="band" id="resultado-final" style="font-size: 13.5px; color: var(--ink-soft); margin: -0.5rem 0 1rem;"></div>
+
+    <div class="pizza" id="pizza" style="display: none;">
+      <svg id="pizza-svg" viewBox="-1.05 -1.05 2.1 2.1" role="img" aria-label="Parte de Central y de Tigre en la recaudación del mes"></svg>
+      <div>
+        <div class="titulo" id="pizza-titulo">Central vs. Tigre</div>
+        <div id="pizza-leyenda"></div>
+      </div>
+    </div>
+
+    <div class="controls" id="controles-fila">
+      <label for="ventana">Promediar últimos</label>
+      <select id="ventana">
+        <option value="1">1 día</option>
+        <option value="3" selected>3 días</option>
+        <option value="5">5 días</option>
+        <option value="7">7 días</option>
+        <option value="10">10 días</option>
+        <option value="15">15 días</option>
+        <option value="20">20 días</option>
+        <option value="all">Todos los días cargados</option>
+      </select>
+      <label for="inflacion">Inflación interanual</label>
+      <input type="text" inputmode="decimal" id="inflacion" style="width: 80px;" placeholder="45,2">
+    </div>
+
+    <details id="resumen-grafico">
+      <summary><h2 style="display:inline; font-size: 15px;">Ver gráfico</h2></summary>
+      <div class="chart-wrap">
+        <svg id="chart" viewBox="0 0 760 300" style="width: 100%; height: auto;" role="img" aria-label="Recaudación acumulada del mes comparada con el mismo mes del año anterior"></svg>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background: var(--ink);"></span>Este año</span>
+        <span><span class="swatch" style="background: none; border-top: 2px dashed var(--ink-mute); height: 0;"></span>Año anterior</span>
+        <span><span class="swatch" style="background: none; border-top: 2px dotted var(--gold); height: 0;"></span>Año anterior + inflación</span>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-bottom: 1rem;">Cargar días</h2>
+    <div class="table-scroll">
+      <table class="carga">
+        <thead>
+          <tr class="head-mob">
+            <th style="text-align:left;">Día</th>
+            <th class="grupo">CENTRAL</th><th class="acum-c"></th>
+            <th class="grupo">TIGRE</th><th class="acum-c"></th>
+            <th class="grupo">TOTAL</th><th class="pct"></th>
+          </tr>
+          <tr class="head-desk">
+            <th rowspan="2" style="text-align:left;">Día</th>
+            <th colspan="2" class="grupo">CENTRAL</th>
+            <th colspan="2" class="grupo">TIGRE</th>
+            <th rowspan="2" class="grupo">TOTAL</th>
+            <th rowspan="2" class="pct" title="Total acumulado vs. el mismo día del año anterior">vs. año ant.</th>
+          </tr>
+          <tr class="head-desk">
+            <th>Diario</th><th class="acum-c">Acumulado</th>
+            <th>Diario</th><th class="acum-c">Acumulado</th>
+          </tr>
+        </thead>
+        <tbody id="entries"></tbody>
+      </table>
+    </div>
+    <p class="note" style="margin: 0.6rem 0 0;">Podés copiar varias filas del Excel y pegarlas de una en la celda del primer día. Tocá el día para marcarlo como fin de semana o víspera de feriado. Se guarda solo.</p>
+    <div class="cierre">
+      <label for="cierre-input">Resultado final del mes (lo que cobra cada empleado)</label>
+      <input type="text" inputmode="numeric" id="cierre-input" placeholder="$ 0">
+      <span class="note" id="save-note"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details>
+      <summary><h2 style="display:inline;">Promedios del mes</h2></summary>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>Central</th><th>Tigre</th><th>Total</th></tr></thead>
+          <tbody id="promedios-body"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <details>
+      <summary><h2 style="display:inline;">Historial de meses</h2></summary>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Mes</th><th>Central</th><th>Tigre</th><th>Recaudación</th><th>Resultado final</th></tr></thead>
+          <tbody id="historia-body"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <p class="foot" style="margin-bottom: 0;"><a href="index.html" style="color: var(--teal);">Ir a la página anterior (solo totales)</a></p>
+  <p class="foot" id="sync-estado" style="margin-top: 0.5rem;">Los datos se guardan solo en este navegador.</p>
+
+  <div class="backup">
+    <button id="export-json" class="wa-btn" type="button" title="Exportar copia de seguridad" aria-label="Exportar copia de seguridad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+    </button>
+    <button id="import-json-btn" class="wa-btn" type="button" title="Importar copia de seguridad" aria-label="Importar copia de seguridad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+    </button>
+    <input type="file" id="import-json-file" accept="application/json,.json" style="display:none;">
+  </div>
+  <p class="note" id="json-note" style="text-align: center; margin: 0.4rem 0 0;"></p>
+</div>
+
+<script>
+// Historial sacado de "Caja de Empleados Diaria.xlsm": una entrada por ciclo
+// (del 26 del mes anterior al 25), con lo diario de cada casino, qué días
+// cuentan como fin de semana y el resultado final del mes.
+const HIST = [{"fecha":"2025-01-01","central":[8975000,9952590,13048650,11348840,13764050,null,null,15144200,19391350,27075800,15686050,15686000,10744030,15259700,20616970,15543750,18276260,16654000,10922300,11915035,20257660,14072450,13863000,24971640,25340320,11691250,15328870,28385250,15478490,21720750,19099540],"tigre":[5701420,7506200,7146170,3863550,6803870,null,null,4936730,7336470,8831320,4723650,3348500,3440180,4004200,3336950,6332350,6062610,3381440,4988600,4157700,4685150,3599370,7329740,5453180,5277920,5658660,4071000,2889740,3057700,5910890,6794540],"finde":[0,0,0,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1],"total":399640},{"fecha":"2025-02-01","central":[17128650,20566930,15100300,13632990,15430100,13936130,16461750,4114000,13988880,13391250,11762650,9081200,12701390,15988800,13367050,10599010,7444450,11476420,16362950,14624630,15041650,15122930,7745350,9212300,12647850,9135300,20058050,15587930,16485950,18622090,8785250],"tigre":[4119200,6767800,3473650,4648400,4511010,7740500,5123970,3823360,6462500,3888450,6281750,5734650,8128670,5392250,4725020,7587650,4180350,5198920,4253290,8221730,6882510,5947360,5754800,5496070,5662550,5548000,6191100,5398990,4460400,7065130,6042700],"finde":[1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0],"total":384231},{"fecha":"2025-03-01","central":[12038610,9652600,10420600,18328400,21896520,22673600,8900800,6882400,8091850,963000,12951200,7326060,6116000,6580380,7495800,6005332,8475000,14055740,10112400,6859120,7024000,5331460,8293000,8607940,23316000,33080440,10838000,4545140,null,null,null],"tigre":[4794370,5550900,7534650,7002900,5011050,7066850,4324000,5830250,7257700,6501520,10040100,5464570,6767420,4804850,4633450,6244100,10662040,8701300,6830300,4973200,7506300,6634700,7042270,6084300,8544250,8352620,7222850,3634650,null,null,null],"finde":[0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,null,null,null],"total":291079},{"fecha":"2025-04-01","central":[5522200,5904260,7360000,10267900,14006980,4971500,7733490,17692000,7757400,14688000,14284090,13198500,7210460,5323000,10252000,null,7364960,9491000,7291400,6281110,7712000,8232600,21677850,14247580,17094150,6926530,6145000,6903000,6760210,14348000,12729000],"tigre":[5292450,5194600,9415030,7517620,4507000,6374850,10988600,6248800,6581550,9897070,10004890,6670500,7062600,5129700,5129020,null,13156820,10716150,5430830,8114200,4465050,5674700,7135150,8525350,10063490,4166060,7708650,5078700,3904920,6247370,11656770],"finde":[0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1],"total":297814},{"fecha":"2025-05-01","central":[9770610,6370000,7009000,5619050,16893010,null,15675250,11390780,9022800,5977750,4803000,7399000,13529210,7848000,6884000,11185950,5855000,3925000,6918080,5175000,7710530,7647000,10764250,5210460,12758000,6771000,7224270,7867000,10080200,15234790,null],"tigre":[8385100,4268250,6087500,5285450,6693150,null,9391260,7703650,4174710,5214800,4319350,5953050,4360900,9118350,7393500,4722200,6963920,4003900,4226020,5653500,10290270,7698580,5747720,6862190,5511550,3823050,6342500,9995300,7659960,4977950,null],"finde":[1,1,0,0,1,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,null],"total":255135},{"fecha":"2025-06-01","central":[4677000,4218000,5309990,6057000,5827260,7647850,13572990,4269950,2886500,4837560,4052000,5500430,9389250,10341900,5356850,3505000,5143390,3421000,4885970,7795000,10794220,5258000,4512000,5095000,6248460,10389000,17127000,13099210,5875000,5059480,4518750],"tigre":[7608420,5565770,6782650,4626800,7532500,8142600,4783600,4317420,6501750,6187320,4800800,8001500,9296700,5550250,6826200,3703800,2872550,4406800,7970550,8033050,6572700,5201000,3323950,4844300,8629700,8835500,5890520,5320220,4933300,6558200,5017250],"finde":[0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0],"total":225857},{"fecha":"2025-07-01","central":[4709300,5986000,9331230,6139500,3471000,6684590,6857250,5924000,7049000,9185590,11038400,6018000,8234250,5345750,5755000,7241360,18204550,11700000,7076710,4759000,6068000,6693140,6965000,7332650,8808424,8686000,6966000,11119490,9918000,11336660,null],"tigre":[5459250,9848620,7696300,6935400,6429250,3995900,5231350,5961900,8071450,7196600,5702000,5492850,11106600,4109000,10074420,8165700,8340650,6170800,4493210,7045500,4722800,6001600,8273400,8499320,3880500,4878000,6496700,7276450,4423350,6543700,null],"finde":[0,1,1,1,0,0,0,0,1,1,1,0,1,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,null],"total":251749},{"fecha":"2025-08-01","central":[10544450,7609130,5339000,3505000,5918980,10618000,12578610,19855200,10377110,5543050,5951000,8483700,6138000,11541910,8234900,19419880,6438000,4525910,4912000,5132000,7572200,12679720,8024100,5039000,4566000,8483490,8001000,8404340,9495550,7494320,4034000],"tigre":[7873000,3734060,5536700,4918200,3672400,7397470,9732300,8296150,4465070,5322000,3785620,4026600,3801600,6894500,9553000,5107000,6674750,3667300,8183100,5778750,8862500,7375900,4961650,4088900,4512100,5920700,4468800,10706400,7104920,6342950,4543600],"finde":[1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0],"total":252124},{"fecha":"2025-09-01","central":[4111000,6999750,6091000,10219810,8653000,9708590,3909000,7140000,6016120,3435000,5661000,4915760,null,5504000,4601750,5720500,5123000,13095000,11924920,10783750,7150000,4559050,6042250,5537000,7044370,7704000,11000540,4481000,5843950,3826250,4942720],"tigre":[7913000,5535580,4830550,9072700,10081200,5158000,5622400,5025650,6398200,3995600,10238100,4336200,null,6973600,4335000,4534100,7480380,7772850,9135600,4480320,8409400,5039000,3925000,3922740,8431250,10079940,4796150,6897850,3819400,6572800,3993200],"finde":[0,0,0,1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0],"total":221289},{"fecha":"2025-10-01","central":[7888000,8365000,10275270,5002250,5978500,4856470,7392500,8013000,13397270,7014300,4979150,5431000,5415000,5968950,13546850,9373450,7412330,5820000,5817000,10209380,7888000,5817000,6828340,2979500,4921000,12139970,6881500,6298000,6285300,8539000,null],"tigre":[6351350,7836220,4794200,6166950,8687550,4561600,4017450,9687950,7520700,5290600,7746200,6484300,5401100,8370150,7363050,8809550,6652800,5197700,4133050,3060520,5636300,8360870,8810050,3093140,7512500,4104500,3192300,4706100,10326900,5849000,null],"finde":[1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,null],"total":237321},{"fecha":"2025-11-01","central":[null,4566000,7885630,4808750,4996000,6436000,10073900,6119925,6292630,11530000,5723750,7995110,9098000,12030000,6231470,3458000,4637000,5030000,6501710,9088000,11572390,11753000,5069000,3398060,6766000,6788000,13407800,12318850,13461760,14992050,5599650],"tigre":[null,7784990,6670800,4109600,4880800,9634800,10473300,6640500,6496350,6733100,7295000,5557000,8094950,9609800,7137050,4698950,5486400,4490600,4864500,8321200,8479990,5439000,6088500,5185000,5612900,5462800,9732100,6652000,4019040,7515350,4929600],"finde":[0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0],"total":260974},{"fecha":"2025-12-01","central":[6290250,5771000,10517920,9082650,8901120,7992000,5886000,3643780,3725000,6486000,11026000,10889244,9029750,6761000,7664810,6219000,7671000,15684050,11964420,8110000,6176000,6032470,10990000,12211230,16709450,10586100,5234000,8861790,null,null,null],"tigre":[4783450,8947200,8990540,9180200,4701900,5307400,6643800,4961800,5511050,7109100,10320500,6408300,6552800,10522600,4635500,10192700,7328300,7252770,6507900,8946300,7834500,4666700,5085120,10069000,9114600,7421000,6220800,5739100,null,null,null],"finde":[0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,null],"total":261898},{"fecha":"2026-01-01","central":[15373400,17837480,16951750,8890400,12873980,null,null,19212000,23655080,21412100,11262640,13169200,14456650,12717950,14161870,20390150,27040260,12738600,17643280,9866800,15291520,17304500,16923950,16904600,14169720,11862750,16115780,15558600,16369060,17144500,14368980],"tigre":[8561500,6828300,5356400,5808500,8192500,null,null,8394750,9455200,6738800,5469200,4816900,4860300,4902010,9836100,8604800,4583000,5773400,4839520,4764970,6383500,7431650,8403000,6551600,5818300,6304200,4012000,5342950,7327800,10706850,4122250],"finde":[1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1],"total":440582},{"fecha":"2026-02-01","central":[11463250,14049780,13868600,21965450,15471650,18946110,17245640,13408950,9640500,14325650,4713000,17192870,17931700,16164830,13571300,8198650,14091500,11074400,null,24928540,17623300,19104610,13368950,10309300,null,14276900,16339620,13460650,12633390,8324200,9599520],"tigre":[7322300,5887000,4881050,4289080,10687050,10833700,4784020,6005150,6026700,4835000,4403000,8305700,7083000,2222500,6195100,4834200,3307050,4638400,null,9674250,6439550,6418800,4535000,5780300,null,7608950,7853250,4671900,4910500,3244000,4135900],"finde":[0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0],"total":405024},{"fecha":"2026-03-01","central":[11485750,13659750,14010980,11608150,9000980,8048950,6643320,6842400,9643230,12426500,9158250,10168690,6427000,6096900,8597310,9063650,10138100,8662990,7994000,6041000,7746500,5883500,10374950,12636850,11898600,12982250,6174200,7462150,null,null,null],"tigre":[4464500,5609600,6418600,4556400,4819400,4341650,4328600,4138170,6205000,9237970,4894050,3533950,4782500,6985300,3922920,7345750,9301100,7094960,11805800,4895000,4397500,4215450,7835270,9830600,5753500,11395000,5508100,3743000,null,null,null],"finde":[0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,null,null,null],"total":256559},{"fecha":"2026-04-01","central":[5068000,5763800,12686590,9751400,9459000,4654000,7315610,15972600,10976410,18678100,5362200,4628640,4153000,3702400,6181000,5686820,7261500,6878550,5866750,6710000,4702000,6575900,9329000,18225500,7428620,4272000,5210000,4972300,4776000,9092000,8167250],"tigre":[4648700,8086850,10388800,7108400,4518200,3050500,5514200,6977750,9242600,9128100,4388350,5600300,3608000,7983800,8466400,8583300,9172050,7529450,3847200,3859100,4301500,5716400,6967600,9744970,4457600,3889900,4548300,5375000,3712100,5888800,8199450],"finde":[0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1],"total":251548},{"fecha":"2026-05-01","central":[6067200,7390000,4123890,5315100,10569110,null,11373050,5704040,3745000,7609000,5010100,7560920,6941000,7015000,8217600,6451670,5140000,5193400,7796000,9040980,7648000,5930600,6495150,6105000,6477700,14901000,8429720,7596600,8204200,14863740,null],"tigre":[6082250,3528800,3838500,4103960,7673200,null,8306250,4458000,4032650,4085600,5190000,5276250,7204750,8876400,3254000,4620700,3478650,3758500,3578200,7136400,8001500,3487900,5972900,2758200,3125200,4826200,6389800,6533500,5249050,4430950,null],"finde":[1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,null],"total":212879},{"fecha":"2026-06-01","central":[4575100,9188000,5829160,7672000,12428000,7462670,5830000,6795000,5363040,2529000,5144000,8834000,9482150,5299000,6197000,6596800,4567000,7024170,8544000,20251000,7207630,1746000,3734400,5669000,9616090,9390000,4571600,4299870,8022000,4838600,5450150],"tigre":[3291700,2943000,2951700,7437500,4684250,4595700,5198600,4307400,4627100,5389500,6417400,6100400,4590500,6052800,4854600,3574500,6952500,5911150,7422100,6511050,4397200,3722000,4141500,3508700,8486600,9116270,2829500,3027300,4397750,4908000,5211000],"finde":[0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0],"total":215904},{"fecha":"2026-07-01","central":[6692000,6888000,7654100,2837000,5972000,5404710,4620000,4291000,8572000,8040380,2712000,4003000,7541970,7643000,7901600,3249000,7521030,3367000,5082000,1234000,5966090,4671000,6446000,null,7922290,8450000,5910900,4879000,8176990,7684000,null],"tigre":[6371220,3921400,5161150,3765250,4287700,5265000,4395600,4496700,8767050,3286500,5922900,2420000,7254500,5859700,8349000,2606600,4840000,4312650,3513300,1129500,3449500,9762000,6872100,null,9436300,4711000,4588750,3742500,7910500,11157500,null],"finde":[1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,null],"total":192856},{"fecha":"2026-08-01","central":[8576160,5532000,4204000,7493800,5148650,8565000,11480000,7179000,5346250,8062300,9883160,3523250,7453000,15110090,7334500,5208000,3156000,4483180,8833000,6762000,13864000,15362140,7214200,4025000,6093700,6025990,5985000,6067000,6138500,4052550,4904000],"tigre":[7459300,4236300,5983900,4791000,3755500,5857400,10089400,6087250,5587700,4398400,5564500,3361000,8119250,7832000,6076000,6789550,5111700,5540000,5452500,10400260,9517700,9141100,8218600,4687400,3846100,4873600,8149500,5541150,2989100,5807800,3943000],"finde":[1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0],"total":249290},{"fecha":"2026-09-01","central":[5490700,3201000,9181450,8006000,9851000,5165370,3841000,3063000,4948400,7376540,7620000,7125200,2711400,3494850,4421900,10810400,6784220,9806000,8644000,6320720,4576000,4175800,3698200,8420340,9448000,8075200,5637830,9518000,5995000,4510200,7296000],"tigre":[4023000,7724000,7509150,6967600,5382500,5312700,6904300,4218300,5744900,8265500,7886600,6110150,5645700,4392100,5727100,4831700,7819700,6312200,4571100,4482200,6315500,4087000,4507000,8160800,8298050,5186700,7181000,3938900,5240600,7680500,6987000],"finde":[0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1],"total":239343},{"fecha":"2026-10-01","central":[9478150,6693000,7394400,6989000,5896200,9680600,5979820,9180000,6755400,4798800,4629110,5688500,5027800,8441000,12414000,14042210,6710000,4067000,6388000,6359400,6500800,5045000,4602000,4971380,6325000,4441200,5753000,7412310,8798000,5448100,null],"tigre":[9558600,6823600,6887000,4636900,4322700,4130500,8932100,8161100,6008650,2995500,2995500,5822300,13130400,10075700,7051450,8598200,7901000,6837400,6426500,7304200,8250200,8179500,4500500,7086000,2507500,8675500,3730000,8836300,10164500,5316500,null],"finde":[1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0,0,1,1,1,null],"total":242537}];
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_LARGO = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DIAS_SEM = ['do','lu','ma','mi','ju','vi','sá'];
+
+function hay(v) { return v !== null && v !== undefined && v !== ''; }
+function fmtMoney(v) {
+  if (!hay(v) || isNaN(v)) return '—';
+  return '$ ' + Math.round(v).toLocaleString('es-AR');
+}
+function fmtPct(v) {
+  if (!hay(v) || isNaN(v) || !isFinite(v)) return '—';
+  const s = (v * 100).toFixed(1).replace('.', ',') + '%';
+  return v >= 0 ? '+' + s : s;
+}
+function mesLabel(fecha) {
+  const [y, m] = fecha.split('-');
+  return MESES_LARGO[parseInt(m, 10) - 1] + ' ' + y;
+}
+function parsePercent(str) {
+  if (!hay(str)) return null;
+  const v = parseFloat(String(str).trim().replace('%', '').replace(',', '.'));
+  return isNaN(v) ? null : v;
+}
+function formatPercentInput(v) { return hay(v) ? String(v).replace('.', ',') : ''; }
+function parseARSInput(str) {
+  if (!hay(str)) return null;
+  const digits = String(str).replace(/[^\d]/g, '');
+  return digits === '' ? null : parseInt(digits, 10);
+}
+function formatARSInput(v) { return hay(v) && !isNaN(v) ? '$ ' + Number(v).toLocaleString('es-AR') : ''; }
+function attachCurrencyFormatting(input) {
+  input.addEventListener('input', () => {
+    const raw = parseARSInput(input.value);
+    input.value = raw === null ? '' : formatARSInput(raw);
+    const endPos = input.value.length;
+    input.setSelectionRange(endPos, endPos);
+  });
+}
+
+// -- ciclo 26 → 25: tiene tantos días como el mes calendario anterior --
+function monthParts(fecha) { const [y, m] = fecha.split('-').map(Number); return { year: y, month: m }; }
+function cycleDays(fecha) { const { year, month } = monthParts(fecha); return new Date(year, month - 1, 0).getDate(); }
+function cycleDate(fecha, i) {
+  const { year, month } = monthParts(fecha);
+  const d = new Date(year, month - 2, 26);
+  d.setDate(d.getDate() + i);
+  return d;
+}
+function fechaCalendarioLarga(fecha, i) {
+  const d = cycleDate(fecha, i);
+  return d.getDate() + ' de ' + MESES_LARGO[d.getMonth()];
+}
+function nextMonthFecha(fecha) {
+  let { year, month } = monthParts(fecha);
+  month += 1;
+  if (month > 12) { month = 1; year += 1; }
+  return year + '-' + String(month).padStart(2, '0') + '-01';
+}
+function yearAgoFecha(fecha) {
+  const { year, month } = monthParts(fecha);
+  return (year - 1) + '-' + String(month).padStart(2, '0') + '-01';
+}
+
+// viernes, sábado y domingo cuentan como fin de semana, salvo que se marque otra cosa
+function esFinde(m, i) {
+  if (m.finde && hay(m.finde[i])) return !!m.finde[i];
+  return cycleDate(m.fecha, i).getDay() >= 5 || cycleDate(m.fecha, i).getDay() === 0;
+}
+
+// -- cálculos de un mes: acumulados por casino y TOTAL --
+// Un día cuenta como cargado cuando tiene los dos casinos. Los días vacíos
+// anteriores al último cargado se toman como 0 (casino cerrado).
+function calcularMes(m) {
+  const n = cycleDays(m.fecha);
+  const C = m.central || [], T = m.tigre || [];
+  let ultimo = -1, ultimoAlgo = -1;
+  for (let i = 0; i < n; i++) {
+    if (hay(C[i]) && hay(T[i])) ultimo = i;
+    if (hay(C[i]) || hay(T[i])) ultimoAlgo = i;
+  }
+  const dias = new Array(31).fill(null), acumC = new Array(31).fill(null), acumT = new Array(31).fill(null);
+  let sc = 0, st = 0;
+  for (let i = 0; i <= ultimoAlgo; i++) {
+    sc += Number(C[i] || 0);
+    st += Number(T[i] || 0);
+    if (hay(C[i]) || i <= ultimo) acumC[i] = sc;
+    if (hay(T[i]) || i <= ultimo) acumT[i] = st;
+    if (i <= ultimo) dias[i] = sc + st;
+  }
+  return { n, dias, acumC, acumT, ultimo, ultimoAlgo };
+}
+
+// Busca el total de un día aunque no exista (ej. el 31 en un mes de 30):
+// interpola entre el día cargado anterior y el siguiente.
+function valorEnDia(dias, i) {
+  if (!dias) return null;
+  let izqIdx = -1, izqVal = null, derIdx = -1, derVal = null;
+  for (let k = i; k >= 0; k--) if (hay(dias[k])) { izqIdx = k; izqVal = Number(dias[k]); break; }
+  for (let k = i; k < dias.length; k++) if (hay(dias[k])) { derIdx = k; derVal = Number(dias[k]); break; }
+  if (izqVal !== null && derVal !== null) {
+    if (izqIdx === derIdx) return izqVal;
+    return izqVal + (derVal - izqVal) * (i - izqIdx) / (derIdx - izqIdx);
+  }
+  return izqVal !== null ? izqVal : derVal;
+}
+
+// -- proyección: el mismo cálculo de siempre, sobre el TOTAL (Central + Tigre).
+// Para cada día cargado se compara el acumulado con el del mismo día del año
+// anterior; se promedian esas proporciones en los últimos N días y se
+// multiplica por el resultado final del año anterior. --
+function getVentana() {
+  const v = document.getElementById('ventana').value;
+  return v === 'all' ? Infinity : parseInt(v, 10);
+}
+function proyectar(dias, yaDias, yaTotal, ventana) {
+  const ratios = dias.map((a, i) => {
+    if (!hay(a)) return null;
+    const b = valorEnDia(yaDias, i);
+    return b ? a / b : null;
+  });
+  let last = -1;
+  for (let i = ratios.length - 1; i >= 0; i--) if (ratios[i] !== null) { last = i; break; }
+  if (last < 0 || !yaTotal) return { esperado: null, banda: null, ratios, last };
+  const slice = ratios.slice(Math.max(0, last - ventana + 1), last + 1).filter(r => r !== null);
+  if (!slice.length) return { esperado: null, banda: null, ratios, last };
+  const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+  return {
+    esperado: avg * yaTotal,
+    banda: [Math.min(...slice) * yaTotal, Math.max(...slice) * yaTotal],
+    ratios, last
+  };
+}
+
+// -- historial persistente --
+const LS_KEY = 'caja_casinos_v1';
+let historial;
+try {
+  const saved = localStorage.getItem(LS_KEY);
+  historial = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(HIST));
+} catch (e) {
+  historial = JSON.parse(JSON.stringify(HIST));
+}
+function mesVacio(fecha) {
+  return { fecha, central: new Array(31).fill(null), tigre: new Array(31).fill(null), finde: new Array(31).fill(null), total: null };
+}
+// si el último mes ya tiene resultado final, se abre el siguiente
+function ensureMesAbierto() {
+  while (hay(historial[historial.length - 1].total)) {
+    historial.push(mesVacio(nextMonthFecha(historial[historial.length - 1].fecha)));
+  }
+}
+ensureMesAbierto();
+let selIdx = historial.length - 1;
+function mesSel() { return historial[selIdx]; }
+function buscarMes(fecha) { return historial.find(m => m.fecha === fecha) || null; }
+
+// -- sincronización con Firebase (mismo proyecto que la otra página, otro documento) --
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyADOsIf2nLapSXrQl_NIZif5g8k5r3bShw",
+  authDomain: "contador-a1d3e.firebaseapp.com",
+  projectId: "contador-a1d3e",
+  storageBucket: "contador-a1d3e.firebasestorage.app",
+  messagingSenderId: "160590135521",
+  appId: "1:160590135521:web:605523a65c4fa92f5b37a0"
+};
+const NUBE_COLECCION = 'proyeccion_recaudacion';
+const NUBE_DOC = 'casinos';
+let nubeRef = null;
+let nubeTimer = null;
+
+function setSyncEstado(texto, color) {
+  const el = document.getElementById('sync-estado');
+  el.textContent = texto;
+  el.style.color = color || 'var(--ink-mute)';
+}
+function subirANube() {
+  if (!nubeRef) return;
+  clearTimeout(nubeTimer);
+  setSyncEstado('Guardando en la nube…');
+  nubeTimer = setTimeout(() => {
+    nubeRef.set({
+      historial: JSON.stringify(historial),
+      actualizado: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+      setSyncEstado('Sincronizado en todos tus aparatos', 'var(--teal)');
+    }).catch(() => {
+      setSyncEstado('No se pudo guardar en la nube. Quedó guardado en este aparato.', 'var(--rust)');
+    });
+  }, 600);
+}
+function guardar() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(historial)); } catch (e) {}
+  subirANube();
+}
+function editandoAhora() {
+  const a = document.activeElement;
+  return a && a.tagName === 'INPUT';
+}
+function iniciarNube() {
+  if (!FIREBASE_CONFIG.apiKey || typeof firebase === 'undefined') {
+    setSyncEstado('Los datos se guardan solo en este navegador.');
+    return;
+  }
+  try {
+    const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+    nubeRef = firebase.firestore(app).collection(NUBE_COLECCION).doc(NUBE_DOC);
+  } catch (e) {
+    setSyncEstado('No se pudo conectar con la nube. Los datos quedan en este aparato.', 'var(--rust)');
+    return;
+  }
+  setSyncEstado('Conectando con la nube…');
+  nubeRef.onSnapshot(snap => {
+    if (snap.metadata.hasPendingWrites) return;
+    if (!snap.exists) { subirANube(); return; }
+    let datos;
+    try { datos = JSON.parse(snap.data().historial); } catch (e) { return; }
+    if (!Array.isArray(datos) || !datos.length) return;
+    if (JSON.stringify(datos) === JSON.stringify(historial)) {
+      setSyncEstado('Sincronizado en todos tus aparatos', 'var(--teal)');
+      return;
+    }
+    const fechaSel = mesSel().fecha;
+    const estabaEnUltimo = selIdx === historial.length - 1;
+    historial = datos;
+    ensureMesAbierto();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(historial)); } catch (e) {}
+    const idx = historial.findIndex(m => m.fecha === fechaSel);
+    selIdx = estabaEnUltimo || idx < 0 ? historial.length - 1 : idx;
+    if (editandoAhora()) renderCalculos(); else render();
+    setSyncEstado('Sincronizado en todos tus aparatos', 'var(--teal)');
+  }, () => {
+    setSyncEstado('Sin conexión con la nube. Los datos quedan en este aparato.', 'var(--rust)');
+  });
+}
+
+// ================= pantalla =================
+function render() {
+  renderTabla();
+  renderCalculos();
+}
+
+// arma la tabla de carga (inputs) del mes elegido
+function renderTabla() {
+  const m = mesSel();
+  const n = cycleDays(m.fecha);
+  const body = document.getElementById('entries');
+  body.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const d = cycleDate(m.fecha, i);
+    const tr = document.createElement('tr');
+    tr.dataset.row = i;
+    if (d.getDate() >= 26) tr.className = 'prev';
+    tr.innerHTML =
+      '<td class="d"><button type="button" class="dchip" data-chip="' + i + '" title="Tocá para marcar como fin de semana / víspera de feriado">' +
+        '<span class="wd">' + DIAS_SEM[d.getDay()] + '</span><span>' + d.getDate() + '</span></button></td>' +
+      '<td class="in" data-cell="central"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="central" value="' + formatARSInput(m.central[i]) + '" placeholder="$ 0" aria-label="Central, diario del ' + d.getDate() + '"></td>' +
+      '<td class="calc acum-c" data-acum="central"></td>' +
+      '<td class="in" data-cell="tigre"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="tigre" value="' + formatARSInput(m.tigre[i]) + '" placeholder="$ 0" aria-label="Tigre, diario del ' + d.getDate() + '"></td>' +
+      '<td class="calc acum-c" data-acum="tigre"></td>' +
+      '<td class="tot" data-acum="total"></td>' +
+      '<td class="pct" data-acum="pct"></td>';
+    body.appendChild(tr);
+  }
+  body.querySelectorAll('input').forEach(inp => {
+    attachCurrencyFormatting(inp);
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.day, 10);
+      mesSel()[inp.dataset.casino][i] = parseARSInput(inp.value);
+      renderCalculos();
+    });
+    inp.addEventListener('change', () => { guardar(); avisarGuardado(); });
+    inp.addEventListener('paste', ev => pegarDesdeExcel(ev, inp));
+  });
+  body.querySelectorAll('.dchip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = mesSel();
+      const i = parseInt(btn.dataset.chip, 10);
+      if (!m.finde) m.finde = new Array(31).fill(null);
+      m.finde[i] = esFinde(m, i) ? 0 : 1;
+      guardar();
+      renderCalculos();
+    });
+  });
+
+  const cierre = document.getElementById('cierre-input');
+  if (document.activeElement !== cierre) cierre.value = formatARSInput(m.total);
+  const infl = document.getElementById('inflacion');
+  if (document.activeElement !== infl) infl.value = formatPercentInput(m.inflacion);
+}
+
+// -- pegar desde Excel: al copiar celdas, Excel las pasa como texto con
+// tabulaciones entre columnas y un renglón por fila --
+function numeroDeCelda(txt) {
+  let t = String(txt).replace(/[$\s ]/g, '');
+  if (t === '' || t === '-') return null;
+  t = t.replace(/[.,]\d{1,2}$/, ''); // centavos ("9.478.150,00")
+  if (!/^\d[\d.,]*$/.test(t)) return undefined; // no es un número (texto, encabezado)
+  return parseInt(t.replace(/[.,]/g, ''), 10);
+}
+
+function pegarDesdeExcel(ev, inp) {
+  const texto = (ev.clipboardData || window.clipboardData).getData('text');
+  if (!texto || !/[\t\n]/.test(texto.trim())) return; // un solo valor: pegado normal
+  ev.preventDefault();
+
+  const m = mesSel();
+  const n = cycleDays(m.fecha);
+  const filas = texto.replace(/\r/g, '').replace(/\n+$/, '').split('\n')
+    .map(f => f.split('\t').map(numeroDeCelda))
+    // fuera los encabezados (renglones con texto y sin números); los renglones
+    // vacíos se dejan, así un día sin dato no corre los siguientes
+    .filter(f => f.some(v => typeof v === 'number') || f.every(v => v === null));
+  if (!filas.some(f => f.some(v => typeof v === 'number'))) return;
+
+  // ¿la primera columna es el número de día (26, 27, … 1, 2, …)?
+  const esDia = v => typeof v === 'number' && v >= 1 && v <= 31;
+  const conNumeros = filas.filter(f => f.some(v => typeof v === 'number'));
+  const conDia = conNumeros.length > 1 && conNumeros.every(f => esDia(f[0])) &&
+    filas.some(f => f.slice(1).some(v => typeof v === 'number' && v > 31));
+  const diaAIndice = {};
+  for (let i = 0; i < n; i++) diaAIndice[cycleDate(m.fecha, i).getDate()] = i;
+
+  let i = parseInt(inp.dataset.day, 10);
+  let pegados = 0;
+  filas.forEach(f => {
+    let fila = f;
+    if (conDia) {
+      if (!esDia(f[0]) || diaAIndice[f[0]] === undefined) return;
+      i = diaAIndice[f[0]];
+      fila = f.slice(1);
+    }
+    if (i >= n) return;
+    // 1 columna: el casino de la celda donde se pegó.
+    // 2 columnas: Central y Tigre.
+    // 4 o más (como la planilla: diario, acumulado, diario, acumulado…):
+    // Central es la 1.ª y Tigre la 3.ª.
+    let c, t;
+    if (fila.length === 1) {
+      if (inp.dataset.casino === 'central') c = fila[0]; else t = fila[0];
+    } else if (fila.length === 2 || fila.length === 3) {
+      if (inp.dataset.casino === 'tigre') { t = fila[0]; } else { c = fila[0]; t = fila[1]; }
+    } else {
+      c = fila[0]; t = fila[2];
+    }
+    let algo = false;
+    if (typeof c === 'number') { m.central[i] = c; algo = true; }
+    if (typeof t === 'number') { m.tigre[i] = t; algo = true; }
+    if (algo) pegados++;
+    i++;
+  });
+
+  guardar();
+  renderTabla();
+  renderCalculos();
+  avisarGuardado(pegados === 1 ? 'Se pegó 1 día.' : 'Se pegaron ' + pegados + ' días.');
+}
+
+let notaTimer = null;
+function avisarGuardado(texto) {
+  const note = document.getElementById('save-note');
+  note.textContent = texto || 'Guardado.';
+  clearTimeout(notaTimer);
+  notaTimer = setTimeout(() => { note.textContent = ''; }, 2500);
+}
+
+// colores de la planilla: mejor y peor día de cada casino en verde / naranja
+// fuerte, y el 30% más alto / más bajo en verde / naranja suave
+function clasesColor(valores) {
+  const vals = valores.filter(v => hay(v) && v > 0);
+  const out = new Map();
+  if (vals.length < 3) return () => '';
+  const asc = vals.slice().sort((a, b) => a - b);
+  const k = Math.max(1, Math.floor(vals.length * 0.3));
+  const min = asc[0], max = asc[asc.length - 1];
+  const umbralBajo = asc[k - 1], umbralAlto = asc[asc.length - k];
+  return v => {
+    if (!hay(v) || v <= 0) return '';
+    if (v === max) return 'top-1';
+    if (v === min) return 'bot-1';
+    if (v >= umbralAlto) return 'top';
+    if (v <= umbralBajo) return 'bot';
+    return '';
+  };
+}
+
+// actualiza todo lo calculado sin tocar lo que se está escribiendo
+function renderCalculos() {
+  const m = mesSel();
+  const calc = calcularMes(m);
+  const ya = buscarMes(yearAgoFecha(m.fecha));
+  const yaCalc = ya ? calcularMes(ya) : null;
+  const yaDias = yaCalc ? yaCalc.dias : null;
+
+  // navegación
+  document.getElementById('mes-titulo').textContent = mesLabel(m.fecha).replace(/^./, c => c.toUpperCase());
+  document.getElementById('mes-ant').disabled = selIdx <= 0;
+  document.getElementById('mes-sig').disabled = selIdx >= historial.length - 1;
+
+  // tabla
+  const colorC = clasesColor(m.central.slice(0, calc.n));
+  const colorT = clasesColor(m.tigre.slice(0, calc.n));
+  document.querySelectorAll('#entries tr[data-row]').forEach(tr => {
+    const i = parseInt(tr.dataset.row, 10);
+    tr.querySelector('.dchip').classList.toggle('finde', esFinde(m, i));
+    tr.querySelector('[data-cell="central"]').className = 'in ' + colorC(m.central[i]);
+    tr.querySelector('[data-cell="tigre"]').className = 'in ' + colorT(m.tigre[i]);
+    tr.querySelector('[data-acum="central"]').textContent = calc.acumC[i] !== null ? fmtMoney(calc.acumC[i]) : '';
+    tr.querySelector('[data-acum="tigre"]').textContent = calc.acumT[i] !== null ? fmtMoney(calc.acumT[i]) : '';
+    const tot = tr.querySelector('[data-acum="total"]');
+    if (calc.dias[i] !== null) {
+      tot.textContent = fmtMoney(calc.dias[i]);
+      tot.style.color = '';
+    } else if (hay(m.central[i]) !== hay(m.tigre[i])) {
+      tot.textContent = 'falta ' + (hay(m.central[i]) ? 'Tigre' : 'Central');
+      tot.style.color = 'var(--ink-mute)';
+    } else {
+      tot.textContent = '';
+    }
+    const pctEl = tr.querySelector('[data-acum="pct"]');
+    const b = calc.dias[i] !== null ? valorEnDia(yaDias, i) : null;
+    if (b) {
+      const p = calc.dias[i] / b - 1;
+      pctEl.textContent = fmtPct(p);
+      pctEl.className = 'pct ' + (p >= 0 ? 'pos' : 'neg');
+    } else {
+      pctEl.textContent = '';
+      pctEl.className = 'pct';
+    }
+  });
+
+  // proyección
+  const res = proyectar(calc.dias, yaDias, ya ? ya.total : null, getVentana());
+  document.getElementById('mes-sub').textContent = !ya
+    ? 'Sin el mismo mes del año anterior para comparar'
+    : res.last >= 0
+      ? 'Proyección al ' + fechaCalendarioLarga(m.fecha, res.last)
+      : calc.ultimo >= 0
+        ? 'Cargado hasta el ' + fechaCalendarioLarga(m.fecha, calc.ultimo) + ' (todavía sin comparación con el año anterior)'
+        : 'Sin datos cargados todavía';
+  document.getElementById('esperado').textContent = fmtMoney(res.esperado);
+  document.getElementById('banda').textContent = res.banda && res.banda[0] !== res.banda[1]
+    ? 'entre ' + fmtMoney(res.banda[0]) + ' y ' + fmtMoney(res.banda[1])
+    : '';
+
+  const vsEl = document.getElementById('vs-anterior');
+  const vsSub = document.getElementById('vs-anterior-sub');
+  const yaLast = calc.ultimo >= 0 ? valorEnDia(yaDias, calc.ultimo) : null;
+  if (calc.ultimo >= 0 && yaLast) {
+    if (!hay(m.inflacion)) {
+      vsEl.textContent = '—';
+      vsSub.textContent = 'cargá la inflación interanual para ver esta comparación';
+    } else {
+      const p = calc.dias[calc.ultimo] / (yaLast * (1 + m.inflacion / 100)) - 1;
+      vsEl.innerHTML = '<span style="color: ' + (p >= 0 ? 'var(--teal)' : 'var(--rust)') + ';">' + fmtPct(p) + '</span>';
+      vsSub.textContent = 'al ' + fechaCalendarioLarga(m.fecha, calc.ultimo) + ', vs. mismo día del año anterior ajustado por inflación';
+    }
+  } else {
+    vsEl.textContent = '—';
+    vsSub.textContent = '';
+  }
+
+  const rf = document.getElementById('resultado-final');
+  if (hay(m.total) && res.esperado) {
+    const dif = m.total / res.esperado - 1;
+    rf.innerHTML = 'Resultado final: <strong style="color: var(--ink);">' + fmtMoney(m.total) + '</strong> · ' +
+      '<span style="color: ' + (dif >= 0 ? 'var(--teal)' : 'var(--rust)') + ';">' + fmtPct(dif) + '</span> vs. la proyección';
+  } else if (hay(m.total)) {
+    rf.innerHTML = 'Resultado final: <strong style="color: var(--ink);">' + fmtMoney(m.total) + '</strong>';
+  } else {
+    rf.textContent = '';
+  }
+
+  drawChart(calc.dias, yaDias, m.inflacion);
+  drawPizza(m, calc);
+  renderPromedios(m, calc);
+  buildHistoria();
+}
+
+// -- promedios del mes, como el costado de la planilla --
+function promedio(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null; }
+function renderPromedios(m, calc) {
+  const grupos = {
+    todos: i => true,
+    semana: i => !esFinde(m, i),
+    finde: i => esFinde(m, i),
+    q1: i => i < 15,
+    q2: i => i >= 15
+  };
+  const prom = {};
+  for (const g in grupos) {
+    const c = [], t = [];
+    for (let i = 0; i < calc.n; i++) {
+      if (!grupos[g](i)) continue;
+      if (hay(m.central[i]) && m.central[i] > 0) c.push(Number(m.central[i]));
+      if (hay(m.tigre[i]) && m.tigre[i] > 0) t.push(Number(m.tigre[i]));
+    }
+    const pc = promedio(c), pt = promedio(t);
+    prom[g] = [pc, pt, pc !== null && pt !== null ? pc + pt : null];
+  }
+  const fila = (label, vals) => '<tr><td>' + label + '</td>' + vals.map(v => '<td>' + fmtMoney(v) + '</td>').join('') + '</tr>';
+  const filaPct = (label, a, b) => '<tr><td style="color: var(--ink-mute);">' + label + '</td>' +
+    a.map((v, k) => {
+      const p = v && b[k] ? b[k] / v - 1 : null;
+      return '<td class="' + (p === null ? '' : p >= 0 ? 'pos' : 'neg') + '">' + fmtPct(p) + '</td>';
+    }).join('') + '</tr>';
+  document.getElementById('promedios-body').innerHTML =
+    fila('Promedio diario', prom.todos) +
+    fila('Días de semana', prom.semana) +
+    fila('Fin de semana', prom.finde) +
+    filaPct('fin de semana vs. semana', prom.semana, prom.finde) +
+    fila('Primera quincena', prom.q1) +
+    fila('Segunda quincena', prom.q2) +
+    filaPct('segunda vs. primera', prom.q1, prom.q2);
+}
+
+function drawChart(monthDias, yearAgoDias, inflacion) {
+  const svg = document.getElementById('chart');
+  const W = 760, H = 300, padL = 70, padR = 20, padT = 20, padB = 36;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const ajustado = hay(inflacion) && yearAgoDias
+    ? yearAgoDias.map(v => hay(v) ? v * (1 + inflacion / 100) : null)
+    : null;
+  const allVals = monthDias.concat(yearAgoDias || [], ajustado || []).filter(hay);
+  const maxV = Math.max(...allVals, 1);
+  const x = i => padL + (i / 30) * innerW;
+  const y = v => padT + innerH - (v / maxV) * innerH;
+  function pathFor(arr) {
+    let d = '', started = false;
+    for (let i = 0; i < 31; i++) {
+      if (!hay(arr[i])) continue;
+      d += (started ? ' L ' : 'M ') + x(i).toFixed(1) + ' ' + y(arr[i]).toFixed(1);
+      started = true;
+    }
+    return d;
+  }
+  const gridColor = '#D8D6CD', inkColor = '#1F241F', muteColor = '#5B5E56', goldColor = '#93701F';
+  let grid = '';
+  for (let s = 0; s <= 4; s++) {
+    const v = (maxV / 4) * s, yy = y(v);
+    grid += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yy.toFixed(1) + '" stroke="' + gridColor + '" stroke-width="1"/>';
+    grid += '<text x="' + (padL - 10) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + muteColor + '">' + (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : Math.round(v / 1000) + 'k') + '</text>';
+  }
+  [1, 5, 10, 15, 20, 25, 30].forEach(d => {
+    grid += '<text x="' + x(d - 1).toFixed(1) + '" y="' + (H - padB + 18) + '" text-anchor="middle" font-size="11" fill="' + muteColor + '">' + d + '</text>';
+  });
+  svg.innerHTML = grid +
+    '<path d="' + pathFor(yearAgoDias || []) + '" fill="none" stroke="' + muteColor + '" stroke-width="2" stroke-dasharray="5 4"/>' +
+    (ajustado ? '<path d="' + pathFor(ajustado) + '" fill="none" stroke="' + goldColor + '" stroke-width="2" stroke-dasharray="1.5 4"/>' : '') +
+    '<path d="' + pathFor(monthDias) + '" fill="none" stroke="' + inkColor + '" stroke-width="2.5"/>';
+}
+
+// -- torta: cuánto aportó cada casino a lo recaudado en el mes --
+const COLOR_CENTRAL = '#2F6E5C', COLOR_TIGRE = '#C9A24A';
+function drawPizza(m, calc) {
+  const caja = document.getElementById('pizza');
+  const k = calc.ultimoAlgo;
+  const c = k >= 0 ? (calc.acumC[k] || 0) : 0;
+  const t = k >= 0 ? (calc.acumT[k] || 0) : 0;
+  const total = c + t;
+  if (total <= 0) { caja.style.display = 'none'; return; }
+  caja.style.display = '';
+  const fc = c / total;
+  const svg = document.getElementById('pizza-svg');
+  if (fc <= 0 || fc >= 1) {
+    svg.innerHTML = '<circle r="1" fill="' + (fc >= 1 ? COLOR_CENTRAL : COLOR_TIGRE) + '"/>';
+  } else {
+    // Central arranca arriba (12 en punto) y gira en sentido horario
+    const ang = fc * 2 * Math.PI;
+    const x = Math.sin(ang).toFixed(4), y = (-Math.cos(ang)).toFixed(4);
+    const grande = fc > 0.5 ? 1 : 0;
+    svg.innerHTML =
+      '<path d="M0 0 L0 -1 A1 1 0 ' + grande + ' 1 ' + x + ' ' + y + ' Z" fill="' + COLOR_CENTRAL + '"/>' +
+      '<path d="M0 0 L' + x + ' ' + y + ' A1 1 0 ' + (1 - grande) + ' 1 0 -1 Z" fill="' + COLOR_TIGRE + '"/>' +
+      '<line x1="0" y1="0" x2="0" y2="-1" stroke="#fff" stroke-width="0.04"/>' +
+      '<line x1="0" y1="0" x2="' + x + '" y2="' + y + '" stroke="#fff" stroke-width="0.04"/>';
+  }
+  const pct = v => (v * 100).toFixed(1).replace('.', ',') + '%';
+  const fila = (color, nombre, f, monto) =>
+    '<div class="fila"><span class="punto" style="background: ' + color + ';"></span><div>' +
+    '<div><span class="pct-grande">' + pct(f) + '</span>' + nombre + '</div>' +
+    '<div class="monto">' + fmtMoney(monto) + '</div></div></div>';
+  document.getElementById('pizza-titulo').textContent =
+    'Central vs. Tigre, al ' + fechaCalendarioLarga(m.fecha, k);
+  document.getElementById('pizza-leyenda').innerHTML =
+    fila(COLOR_CENTRAL, 'Central', fc, c) + fila(COLOR_TIGRE, 'Tigre', 1 - fc, t);
+}
+
+function buildHistoria() {
+  const body = document.getElementById('historia-body');
+  body.innerHTML = '';
+  for (let idx = historial.length - 1; idx >= 0; idx--) {
+    const m = historial[idx];
+    const c = calcularMes(m);
+    const ultC = c.ultimoAlgo >= 0 ? c.acumC[c.ultimoAlgo] : null;
+    const ultT = c.ultimoAlgo >= 0 ? c.acumT[c.ultimoAlgo] : null;
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    if (idx === selIdx) tr.style.fontWeight = '600';
+    tr.innerHTML = '<td>' + mesLabel(m.fecha) + '</td><td>' + fmtMoney(ultC) + '</td><td>' + fmtMoney(ultT) + '</td><td>' +
+      fmtMoney(c.ultimo >= 0 ? c.dias[c.ultimo] : null) + '</td><td>' + fmtMoney(m.total) + '</td>';
+    tr.addEventListener('click', () => {
+      selIdx = idx;
+      render();
+      document.getElementById('panel-mes').scrollIntoView({ behavior: 'smooth' });
+    });
+    body.appendChild(tr);
+  }
+}
+
+// -- eventos --
+document.getElementById('mes-ant').addEventListener('click', () => { if (selIdx > 0) { selIdx--; render(); } });
+document.getElementById('mes-sig').addEventListener('click', () => { if (selIdx < historial.length - 1) { selIdx++; render(); } });
+
+document.getElementById('ventana').addEventListener('change', () => {
+  try { localStorage.setItem('caja_casinos_ventana', document.getElementById('ventana').value); } catch (e) {}
+  renderCalculos();
+});
+document.getElementById('inflacion').addEventListener('change', () => {
+  mesSel().inflacion = parsePercent(document.getElementById('inflacion').value);
+  guardar();
+  renderCalculos();
+});
+
+const cierreInput = document.getElementById('cierre-input');
+attachCurrencyFormatting(cierreInput);
+cierreInput.addEventListener('change', () => {
+  const m = mesSel();
+  m.total = parseARSInput(cierreInput.value);
+  const eraUltimo = selIdx === historial.length - 1;
+  ensureMesAbierto();
+  guardar();
+  if (eraUltimo && hay(m.total)) {
+    avisarGuardado('Mes cerrado. Ya está abierto ' + mesLabel(historial[historial.length - 1].fecha) + '.');
+  } else {
+    avisarGuardado();
+  }
+  renderCalculos();
+});
+
+// compartir una captura del recuadro de la proyección
+document.getElementById('wa-share').addEventListener('click', async () => {
+  if (typeof html2canvas !== 'function') {
+    alert('No se pudo cargar lo necesario para generar la imagen. Probá de nuevo en un rato.');
+    return;
+  }
+  let canvas;
+  try {
+    canvas = await html2canvas(document.getElementById('panel-mes'), {
+      backgroundColor: '#FFFFFF',
+      scale: 2,
+      ignoreElements: el => ['wa-share', 'controles-fila', 'resumen-grafico', 'mes-ant', 'mes-sig'].includes(el.id)
+    });
+  } catch (e) {
+    alert('No se pudo generar la imagen para compartir.');
+    return;
+  }
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+  if (!blob) return;
+  const file = new File([blob], 'proyeccion-' + new Date().toISOString().slice(0, 10) + '.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Proyección de recaudación' });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
+// copia de seguridad en JSON
+document.getElementById('export-json').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(historial, null, 1)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'recaudacion-casinos-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('import-json-btn').addEventListener('click', () => document.getElementById('import-json-file').click());
+document.getElementById('import-json-file').addEventListener('change', ev => {
+  const file = ev.target.files[0];
+  const note = document.getElementById('json-note');
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let datos;
+    try { datos = JSON.parse(reader.result); } catch (e) { datos = null; }
+    const valido = Array.isArray(datos) && datos.length &&
+      datos.every(m => m && typeof m.fecha === 'string' && Array.isArray(m.central) && Array.isArray(m.tigre));
+    if (!valido) {
+      note.textContent = 'El archivo no tiene el formato esperado.';
+    } else if (confirm('Esto va a reemplazar todos los datos por los del archivo. ¿Continuar?')) {
+      historial = datos;
+      ensureMesAbierto();
+      selIdx = historial.length - 1;
+      guardar();
+      render();
+      note.textContent = 'Datos importados.';
+      setTimeout(() => { note.textContent = ''; }, 3000);
+    }
+    ev.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+try {
+  const v = localStorage.getItem('caja_casinos_ventana');
+  if (v && ['1', '3', '5', '7', '10', '15', '20', 'all'].includes(v)) document.getElementById('ventana').value = v;
+} catch (e) {}
+
+render();
+iniciarNube();
+</script>
+</body>
+</html>
