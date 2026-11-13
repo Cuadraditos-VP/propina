@@ -211,6 +211,21 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 .cierre input { width: 160px; }
 
 .note { font-size: 13px; color: var(--ink-mute); }
+
+/* gráfico de torta Central vs. Tigre */
+.pizza { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.25rem; padding: 0.9rem 1rem; background: var(--bg); border-radius: 8px; }
+.pizza svg { width: 104px; height: 104px; flex-shrink: 0; }
+.pizza .titulo { font-size: 13px; color: var(--ink-mute); margin-bottom: 0.35rem; }
+.pizza > div { min-width: 0; }
+.pizza .fila { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 14px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.pizza .fila + .fila { margin-top: 0.45rem; }
+.pizza .punto { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; margin-top: 0.3em; }
+.pizza .pct-grande { font-weight: 600; margin-right: 0.3rem; }
+.pizza .monto { color: var(--ink-soft); font-size: 13px; }
+@media (max-width: 520px) {
+  .pizza { gap: 0.9rem; padding: 0.8rem; }
+  .pizza svg { width: 84px; height: 84px; }
+}
 .foot { text-align: center; color: var(--ink-mute); font-size: 12.5px; margin-top: 2rem; }
 .backup { display: flex; justify-content: center; gap: 0.6rem; margin-top: 0.75rem; }
 .backup .wa-btn { width: 34px; height: 34px; }
@@ -253,6 +268,14 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
       </div>
     </div>
     <div class="band" id="resultado-final" style="font-size: 13.5px; color: var(--ink-soft); margin: -0.5rem 0 1rem;"></div>
+
+    <div class="pizza" id="pizza" style="display: none;">
+      <svg id="pizza-svg" viewBox="-1.05 -1.05 2.1 2.1" role="img" aria-label="Parte de Central y de Tigre en la recaudación del mes"></svg>
+      <div>
+        <div class="titulo" id="pizza-titulo">Central vs. Tigre</div>
+        <div id="pizza-leyenda"></div>
+      </div>
+    </div>
 
     <div class="controls" id="controles-fila">
       <label for="ventana">Promediar últimos</label>
@@ -834,6 +857,7 @@ function renderCalculos() {
   }
 
   drawChart(calc.dias, yaDias, m.inflacion);
+  drawPizza(m, calc);
   renderPromedios(m, calc);
   buildHistoria();
 }
@@ -909,6 +933,42 @@ function drawChart(monthDias, yearAgoDias, inflacion) {
     '<path d="' + pathFor(yearAgoDias || []) + '" fill="none" stroke="' + muteColor + '" stroke-width="2" stroke-dasharray="5 4"/>' +
     (ajustado ? '<path d="' + pathFor(ajustado) + '" fill="none" stroke="' + goldColor + '" stroke-width="2" stroke-dasharray="1.5 4"/>' : '') +
     '<path d="' + pathFor(monthDias) + '" fill="none" stroke="' + inkColor + '" stroke-width="2.5"/>';
+}
+
+// -- torta: cuánto aportó cada casino a lo recaudado en el mes --
+const COLOR_CENTRAL = '#2F6E5C', COLOR_TIGRE = '#C9A24A';
+function drawPizza(m, calc) {
+  const caja = document.getElementById('pizza');
+  const k = calc.ultimoAlgo;
+  const c = k >= 0 ? (calc.acumC[k] || 0) : 0;
+  const t = k >= 0 ? (calc.acumT[k] || 0) : 0;
+  const total = c + t;
+  if (total <= 0) { caja.style.display = 'none'; return; }
+  caja.style.display = '';
+  const fc = c / total;
+  const svg = document.getElementById('pizza-svg');
+  if (fc <= 0 || fc >= 1) {
+    svg.innerHTML = '<circle r="1" fill="' + (fc >= 1 ? COLOR_CENTRAL : COLOR_TIGRE) + '"/>';
+  } else {
+    // Central arranca arriba (12 en punto) y gira en sentido horario
+    const ang = fc * 2 * Math.PI;
+    const x = Math.sin(ang).toFixed(4), y = (-Math.cos(ang)).toFixed(4);
+    const grande = fc > 0.5 ? 1 : 0;
+    svg.innerHTML =
+      '<path d="M0 0 L0 -1 A1 1 0 ' + grande + ' 1 ' + x + ' ' + y + ' Z" fill="' + COLOR_CENTRAL + '"/>' +
+      '<path d="M0 0 L' + x + ' ' + y + ' A1 1 0 ' + (1 - grande) + ' 1 0 -1 Z" fill="' + COLOR_TIGRE + '"/>' +
+      '<line x1="0" y1="0" x2="0" y2="-1" stroke="#fff" stroke-width="0.04"/>' +
+      '<line x1="0" y1="0" x2="' + x + '" y2="' + y + '" stroke="#fff" stroke-width="0.04"/>';
+  }
+  const pct = v => (v * 100).toFixed(1).replace('.', ',') + '%';
+  const fila = (color, nombre, f, monto) =>
+    '<div class="fila"><span class="punto" style="background: ' + color + ';"></span><div>' +
+    '<div><span class="pct-grande">' + pct(f) + '</span>' + nombre + '</div>' +
+    '<div class="monto">' + fmtMoney(monto) + '</div></div></div>';
+  document.getElementById('pizza-titulo').textContent =
+    'Central vs. Tigre, al ' + fechaCalendarioLarga(m.fecha, k);
+  document.getElementById('pizza-leyenda').innerHTML =
+    fila(COLOR_CENTRAL, 'Central', fc, c) + fila(COLOR_TIGRE, 'Tigre', 1 - fc, t);
 }
 
 function buildHistoria() {
