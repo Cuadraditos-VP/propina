@@ -312,6 +312,35 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   }
 }
 
+/* botón y ventana flotante del gráfico */
+.btn-grafico { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 13.5px; padding: 6px 12px; }
+.btn-grafico svg { width: 16px; height: 16px; }
+.ventana {
+  position: fixed; z-index: 50;
+  width: min(1000px, 94vw);
+  min-width: 300px; min-height: 180px;
+  max-height: 92vh;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(31, 36, 31, 0.28), 0 2px 8px rgba(31, 36, 31, 0.12);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  resize: both; /* también se puede agrandar desde la esquina */
+}
+.ventana[hidden] { display: none; }
+.ventana-barra {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line);
+  cursor: grab; user-select: none; touch-action: none;
+  font-family: 'Fraunces', serif; font-size: 16px;
+}
+.ventana-barra.arrastrando { cursor: grabbing; }
+.ventana-barra button { width: 30px; height: 30px; padding: 0; border-radius: 999px; font-size: 20px; line-height: 1; background: transparent; border-color: transparent; color: var(--ink-soft); }
+.ventana-barra button:hover { background: var(--line); }
+.ventana-cuerpo { padding: 1rem 1.25rem 1.1rem; overflow: auto; flex: 1; }
+
 /* gráfico de torta Central vs. Tigre */
 .pizza { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.25rem; padding: 0.9rem 1rem; background: var(--bg); border-radius: 8px; }
 .pizza svg { width: 104px; height: 104px; flex-shrink: 0; }
@@ -395,17 +424,10 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
       <input type="text" inputmode="decimal" id="inflacion" style="width: 80px;" placeholder="45,2">
     </div>
 
-    <details id="resumen-grafico">
-      <summary><h2 style="display:inline; font-size: 15px;">Ver gráfico</h2></summary>
-      <div class="chart-wrap">
-        <svg id="chart" viewBox="0 0 760 300" style="width: 100%; height: auto;" role="img" aria-label="Recaudación acumulada del mes comparada con el mismo mes del año anterior"></svg>
-      </div>
-      <div class="legend">
-        <span><span class="swatch" style="background: var(--ink);"></span>Este año</span>
-        <span><span class="swatch" style="background: none; border-top: 2px dashed var(--ink-mute); height: 0;"></span>Año anterior</span>
-        <span><span class="swatch" style="background: none; border-top: 2px dotted var(--gold); height: 0;"></span>Año anterior + inflación</span>
-      </div>
-    </details>
+    <button type="button" id="resumen-grafico" class="btn-grafico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 4 3 6-8"/></svg>
+      Ver gráfico
+    </button>
   </div>
 
   </div>
@@ -489,6 +511,24 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
     <input type="file" id="import-json-file" accept="application/json,.json" style="display:none;">
   </div>
   <p class="note" id="json-note" style="text-align: center; margin: 0.4rem 0 0;"></p>
+</div>
+
+<!-- ventana flotante del gráfico: se mueve arrastrándola de la barra de arriba -->
+<div id="ventana-grafico" class="ventana" hidden role="dialog" aria-labelledby="ventana-titulo">
+  <div class="ventana-barra" id="ventana-barra">
+    <span id="ventana-titulo">Gráfico</span>
+    <button type="button" id="ventana-cerrar" aria-label="Cerrar" title="Cerrar (Esc)">×</button>
+  </div>
+  <div class="ventana-cuerpo">
+    <div class="chart-wrap">
+      <svg id="chart" viewBox="0 0 760 300" style="width: 100%; height: auto;" role="img" aria-label="Recaudación acumulada del mes comparada con el mismo mes del año anterior"></svg>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background: var(--ink);"></span>Este año</span>
+      <span><span class="swatch" style="background: none; border-top: 2px dashed var(--ink-mute); height: 0;"></span>Año anterior</span>
+      <span><span class="swatch" style="background: none; border-top: 2px dotted var(--gold); height: 0;"></span>Año anterior + inflación</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -976,6 +1016,8 @@ function renderCalculos() {
   }
 
   drawChart(calc.dias, yaDias, m.inflacion);
+  document.getElementById('ventana-titulo').textContent =
+    'Recaudación acumulada · ' + mesLabel(m.fecha).replace(/^./, c => c.toUpperCase());
   drawPizza(m, calc);
   renderPromedios(m, calc);
   buildHistoria();
@@ -1119,6 +1161,51 @@ function buildHistoria() {
   }
 }
 
+// -- ventana flotante del gráfico --
+const ventana = document.getElementById('ventana-grafico');
+function abrirGrafico() {
+  ventana.hidden = false;
+  ventana.style.width = '';
+  ventana.style.height = '';
+  // aparece en el centro de la pantalla
+  const r = ventana.getBoundingClientRect();
+  ventana.style.left = Math.max(8, (innerWidth - r.width) / 2) + 'px';
+  ventana.style.top = Math.max(8, (innerHeight - r.height) / 2) + 'px';
+}
+function cerrarGrafico() { ventana.hidden = true; }
+document.getElementById('resumen-grafico').addEventListener('click', () => {
+  if (ventana.hidden) abrirGrafico(); else cerrarGrafico();
+});
+document.getElementById('ventana-cerrar').addEventListener('click', cerrarGrafico);
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !ventana.hidden) cerrarGrafico(); });
+
+// arrastrar desde la barra de arriba (con mouse o con el dedo)
+(function () {
+  const barra = document.getElementById('ventana-barra');
+  let dx = 0, dy = 0, arrastrando = false;
+  barra.addEventListener('pointerdown', ev => {
+    if (ev.target.closest('button')) return;
+    const r = ventana.getBoundingClientRect();
+    dx = ev.clientX - r.left;
+    dy = ev.clientY - r.top;
+    arrastrando = true;
+    barra.classList.add('arrastrando');
+    barra.setPointerCapture(ev.pointerId);
+  });
+  barra.addEventListener('pointermove', ev => {
+    if (!arrastrando) return;
+    const r = ventana.getBoundingClientRect();
+    // que la barra nunca quede fuera de la pantalla
+    const x = Math.min(Math.max(ev.clientX - dx, 60 - r.width), innerWidth - 60);
+    const y = Math.min(Math.max(ev.clientY - dy, 0), innerHeight - 40);
+    ventana.style.left = x + 'px';
+    ventana.style.top = y + 'px';
+  });
+  const soltar = () => { arrastrando = false; barra.classList.remove('arrastrando'); };
+  barra.addEventListener('pointerup', soltar);
+  barra.addEventListener('pointercancel', soltar);
+})();
+
 // -- eventos --
 document.getElementById('ver-todo').addEventListener('click', ev => {
   document.querySelector('table.carga').classList.add('ver-todo');
@@ -1238,7 +1325,7 @@ try {
 // promedios, historial y gráfico se abren como se dejaron la última vez
 // (en este aparato). Si nunca se tocaron: abiertos en PC, cerrados en el celular.
 const anchaDeEntrada = window.matchMedia('(min-width: 1180px)').matches;
-[['det-promedios', anchaDeEntrada], ['det-historial', anchaDeEntrada], ['resumen-grafico', false]].forEach(([id, porDefecto]) => {
+[['det-promedios', anchaDeEntrada], ['det-historial', anchaDeEntrada]].forEach(([id, porDefecto]) => {
   const det = document.getElementById(id);
   const clave = 'caja_casinos_abierto_' + id;
   let guardado = null;
