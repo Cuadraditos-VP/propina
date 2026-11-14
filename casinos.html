@@ -790,7 +790,25 @@ function ensureMesAbierto() {
     historial.push(mesVacio(nextMonthFecha(historial[historial.length - 1].fecha)));
   }
 }
+// Inflación interanual del INDEC (%) de cada mes, para el campo "Inflación
+// interanual". Se completa solo en los meses donde nunca se cargó nada (si se
+// borra a mano, no se vuelve a llenar).
+const INTERANUAL_INDEC = {
+  '2025-01': 84.5, '2025-02': 66.9, '2025-03': 55.9, '2025-04': 47.3, '2025-05': 43.5, '2025-06': 39.4,
+  '2025-07': 36.6, '2025-08': 33.6, '2025-09': 31.8, '2025-10': 31.3, '2025-11': 31.4, '2025-12': 31.5,
+  '2026-01': 32.4, '2026-02': 33.1, '2026-03': 32.6, '2026-04': 32.4, '2026-05': 33.2, '2026-06': 33.5,
+  '2026-07': 33.8, '2026-08': 33.5, '2026-09': 33.4, '2026-10': 33.1
+};
+function completarInflacion() {
+  let cambio = false;
+  historial.forEach(m => {
+    const v = INTERANUAL_INDEC[m.fecha.slice(0, 7)];
+    if (m.inflacion === undefined && v !== undefined) { m.inflacion = v; cambio = true; }
+  });
+  return cambio;
+}
 ensureMesAbierto();
+if (completarInflacion()) { try { localStorage.setItem(LS_KEY, JSON.stringify(historial)); } catch (e) {} }
 let selIdx = historial.length - 1;
 function mesSel() { return historial[selIdx]; }
 function buscarMes(fecha) { return historial.find(m => m.fecha === fecha) || null; }
@@ -864,6 +882,7 @@ function iniciarNube() {
     const estabaEnUltimo = selIdx === historial.length - 1;
     historial = datos;
     ensureMesAbierto();
+    if (completarInflacion()) subirANube();
     try { localStorage.setItem(LS_KEY, JSON.stringify(historial)); } catch (e) {}
     const idx = historial.findIndex(m => m.fecha === fechaSel);
     selIdx = estabaEnUltimo || idx < 0 ? historial.length - 1 : idx;
