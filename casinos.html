@@ -172,8 +172,9 @@ table.carga td { padding: 1px 6px; background: #FBFAF6; border-bottom: 1px solid
 /* separación vertical entre Central, Tigre y TOTAL */
 table.carga .sep { border-left: 1px solid #CFCBBE; }
 /* línea más marcada al empezar cada semana (lunes) y más todavía al cambiar de mes */
-table.carga tr.semana td { border-top: 2px solid #D5D1C4; }
-table.carga tr.mes-nuevo td { border-top: 2px solid #8B8E85; }
+/* (dibujadas por dentro de la celda: no cambian el alto, así la tabla mide igual en todos los meses) */
+table.carga tr.semana td { box-shadow: inset 0 2px 0 #D5D1C4; }
+table.carga tr.mes-nuevo td { box-shadow: inset 0 2px 0 #8B8E85; }
 table.carga td.d { text-align: left; padding-left: 2px; }
 /* acumulados más chicos y claros; TOTAL como columna de resultado */
 table.carga td.calc { color: var(--ink-mute); font-size: 12.5px; }
@@ -269,6 +270,8 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 
 .note { font-size: 13px; color: var(--ink-mute); }
 #ver-todo { display: none; margin-top: 0.5rem; font-size: 13px; padding: 5px 12px; }
+/* filas de relleno para que la tabla mida siempre 31 días (solo en PC) */
+table.carga tr.relleno { display: none; }
 
 /* ---- pantallas anchas: la tabla al centro, entera; el resto a los costados ---- */
 @media (min-width: 1180px) {
@@ -298,6 +301,7 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   .col-centro { grid-area: centro; }
   .col-der { grid-area: der; }
   .col-pie { grid-area: pie; }
+  table.carga tr.relleno { display: table-row; visibility: hidden; }
   .col-pie .foot { margin-top: 0.4rem; font-size: 12px; }
   .layout .panel { padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
   .layout .panel .sub { margin-bottom: 0.75rem; }
@@ -333,6 +337,9 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   .col-der th, .col-der td { padding: 5px 4px; }
   .col-der th { font-size: 11.5px; }
   .col-der td:first-child { white-space: normal; }
+  /* promedios: cada fila en un renglón, así el recuadro mide lo mismo en todos los meses */
+  .col-der table.prom td:first-child { white-space: nowrap; }
+  .col-der table.prom th, .col-der table.prom td { padding-left: 3px; padding-right: 3px; }
   .col-der .panel h2 { font-size: 17px; }
 }
 @media (min-width: 1560px) {
@@ -928,7 +935,20 @@ function renderTabla() {
       '<td class="tot sep" data-acum="total"></td>';
     body.appendChild(tr);
   }
-  body.querySelectorAll('input').forEach(inp => {
+  // en PC la tabla siempre ocupa 31 filas (las que sobran quedan invisibles),
+  // así los recuadros no cambian de lugar entre meses de distinto largo
+  for (let i = n; i < 31; i++) {
+    const tr = document.createElement('tr');
+    tr.className = 'relleno';
+    tr.setAttribute('aria-hidden', 'true');
+    tr.innerHTML =
+      '<td class="d"><span class="dchip"><span class="wd">lu</span><span>30</span></span></td>' +
+      '<td class="in sep"><input type="text" tabindex="-1" disabled></td><td class="calc acum-c"></td>' +
+      '<td class="in sep"><input type="text" tabindex="-1" disabled></td><td class="calc acum-c"></td>' +
+      '<td class="tot sep"></td>';
+    body.appendChild(tr);
+  }
+  body.querySelectorAll('input:not([disabled])').forEach(inp => {
     attachCurrencyFormatting(inp, fmtNum);
     inp.addEventListener('input', () => {
       const i = parseInt(inp.dataset.day, 10);
@@ -1166,7 +1186,7 @@ function renderPromedios(m, calc) {
   const filaPct = (label, a, b) => '<tr class="p-comp"><td>' + label + '</td>' +
     a.map((v, k) => {
       const p = v && b[k] ? b[k] / v - 1 : null;
-      const pill = p === null ? '—' : '<span class="pill ' + (p >= 0 ? 'pos' : 'neg') + '">' + fmtPct(p) + '</span>';
+      const pill = p === null ? '<span class="pill">—</span>' : '<span class="pill ' + (p >= 0 ? 'pos' : 'neg') + '">' + fmtPct(p) + '</span>';
       return '<td' + (k === 2 ? ' class="p-tot"' : '') + '>' + pill + '</td>';
     }).join('') + '</tr>';
   document.getElementById('promedios-body').innerHTML =
