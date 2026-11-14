@@ -164,12 +164,21 @@ td.neg { color: var(--rust); }
 table.carga th { text-align: center; padding: 4px 6px; border-bottom: 1px solid var(--line-strong); color: var(--ink-soft); }
 table.carga tr.head-mob { display: none; }
 table.carga th.grupo { font-weight: 600; color: var(--ink); font-size: 12.5px; letter-spacing: 0.04em; }
-table.carga td { padding: 1px 6px; background: #F8F2E2; border-bottom: 1px solid #E8DCBC; text-align: right; }
-/* días del mes anterior (del 26 a fin de mes): franja verde suave */
-table.carga tr.prev td { background: var(--teal-bg); border-bottom-color: #C9DDD2; }
+/* CENTRAL y TIGRE subrayados con su color de la torta */
+table.carga th.g-central { border-bottom: 3px solid #2F6E5C; }
+table.carga th.g-tigre { border-bottom: 3px solid #C9A24A; }
+/* todas las filas del mismo color: el color queda solo para los mejores / peores días */
+table.carga td { padding: 1px 6px; background: #FBFAF6; border-bottom: 1px solid #E9E6DC; text-align: right; }
+/* separación vertical entre Central, Tigre y TOTAL */
+table.carga .sep { border-left: 1px solid #CFCBBE; }
+/* línea más marcada al empezar cada semana (lunes) y más todavía al cambiar de mes */
+table.carga tr.semana td { border-top: 2px solid #D5D1C4; }
+table.carga tr.mes-nuevo td { border-top: 2px solid #8B8E85; }
 table.carga td.d { text-align: left; padding-left: 2px; }
-table.carga td.calc { color: var(--ink-soft); }
-table.carga td.tot { font-weight: 600; }
+/* acumulados más chicos y claros; TOTAL como columna de resultado */
+table.carga td.calc { color: var(--ink-mute); font-size: 12.5px; }
+table.carga td.tot { font-weight: 700; background: #F1EEE4; }
+table.carga th.th-tot { background: #F1EEE4; }
 table.carga td.in { padding: 1px 2px; }
 table.carga td.in.top   { background: var(--top); }
 table.carga td.in.bot   { background: var(--bot); }
@@ -190,13 +199,15 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 /* botón del día: tocándolo se marca como fin de semana / víspera de feriado */
 .dchip {
   display: inline-flex; gap: 5px; align-items: baseline;
-  padding: 2px 7px; border-radius: 999px;
-  border: 1px solid transparent; background: transparent;
+  padding: 2px 7px; border-radius: 6px;
+  border: none; background: transparent;
   font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums;
 }
+.dchip:hover { background: rgba(31, 36, 31, 0.06); }
 .dchip .wd { font-size: 11px; color: var(--ink-mute); width: 1.4em; text-align: left; }
-.dchip.finde { background: var(--gold-bg); border-color: #DCC891; color: var(--gold); font-weight: 600; }
-.dchip.finde .wd { color: var(--gold); }
+/* fin de semana: solo el texto en dorado y negrita */
+.dchip.finde { color: var(--gold); font-weight: 700; }
+.dchip.finde .wd { color: var(--gold); font-weight: 600; }
 /* en el celular se ocultan los acumulados de cada casino */
 @media (max-width: 680px) {
   table.carga .acum-c, table.carga tr.head-desk { display: none; }
@@ -440,19 +451,19 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
         <thead>
           <tr class="head-mob">
             <th style="text-align:left;">Día</th>
-            <th class="grupo">CENTRAL</th><th class="acum-c"></th>
-            <th class="grupo">TIGRE</th><th class="acum-c"></th>
-            <th class="grupo">TOTAL</th>
+            <th class="grupo g-central sep">CENTRAL</th><th class="acum-c"></th>
+            <th class="grupo g-tigre sep">TIGRE</th><th class="acum-c"></th>
+            <th class="grupo sep th-tot">TOTAL</th>
           </tr>
           <tr class="head-desk">
             <th rowspan="2" style="text-align:left;">Día</th>
-            <th colspan="2" class="grupo">CENTRAL</th>
-            <th colspan="2" class="grupo">TIGRE</th>
-            <th rowspan="2" class="grupo">TOTAL</th>
+            <th colspan="2" class="grupo g-central sep">CENTRAL</th>
+            <th colspan="2" class="grupo g-tigre sep">TIGRE</th>
+            <th rowspan="2" class="grupo sep th-tot">TOTAL</th>
           </tr>
           <tr class="head-desk">
-            <th>Diario</th><th class="acum-c">Acumulado</th>
-            <th>Diario</th><th class="acum-c">Acumulado</th>
+            <th class="sep">Diario</th><th class="acum-c">Acumulado</th>
+            <th class="sep">Diario</th><th class="acum-c">Acumulado</th>
           </tr>
         </thead>
         <tbody id="entries"></tbody>
@@ -569,10 +580,12 @@ function parseARSInput(str) {
   return digits === '' ? null : parseInt(digits, 10);
 }
 function formatARSInput(v) { return hay(v) && !isNaN(v) ? '$ ' + Number(v).toLocaleString('es-AR') : ''; }
-function attachCurrencyFormatting(input) {
+// en la tabla los montos van sin "$", para que se lean y comparen mejor
+function fmtNum(v) { return hay(v) && !isNaN(v) ? Math.round(Number(v)).toLocaleString('es-AR') : ''; }
+function attachCurrencyFormatting(input, formato = formatARSInput) {
   input.addEventListener('input', () => {
     const raw = parseARSInput(input.value);
-    input.value = raw === null ? '' : formatARSInput(raw);
+    input.value = raw === null ? '' : formato(raw);
     const endPos = input.value.length;
     input.setSelectionRange(endPos, endPos);
   });
@@ -796,20 +809,21 @@ function renderTabla() {
     const d = cycleDate(m.fecha, i);
     const tr = document.createElement('tr');
     tr.dataset.row = i;
-    if (d.getDate() >= 26) tr.className = 'prev';
+    if (i > 0 && d.getDate() === 1) tr.classList.add('mes-nuevo');
+    else if (i > 0 && d.getDay() === 1) tr.classList.add('semana');
     if (i > ultimoVisible) tr.classList.add('lejos');
     tr.innerHTML =
       '<td class="d"><button type="button" class="dchip" data-chip="' + i + '" title="Tocá para marcar como fin de semana / víspera de feriado">' +
         '<span class="wd">' + DIAS_SEM[d.getDay()] + '</span><span>' + d.getDate() + '</span></button></td>' +
-      '<td class="in" data-cell="central"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="central" value="' + formatARSInput(m.central[i]) + '" placeholder="$ 0" aria-label="Central, diario del ' + d.getDate() + '"></td>' +
+      '<td class="in sep" data-cell="central"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="central" value="' + fmtNum(m.central[i]) + '" placeholder="0" aria-label="Central, diario del ' + d.getDate() + '"></td>' +
       '<td class="calc acum-c" data-acum="central"></td>' +
-      '<td class="in" data-cell="tigre"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="tigre" value="' + formatARSInput(m.tigre[i]) + '" placeholder="$ 0" aria-label="Tigre, diario del ' + d.getDate() + '"></td>' +
+      '<td class="in sep" data-cell="tigre"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="tigre" value="' + fmtNum(m.tigre[i]) + '" placeholder="0" aria-label="Tigre, diario del ' + d.getDate() + '"></td>' +
       '<td class="calc acum-c" data-acum="tigre"></td>' +
-      '<td class="tot" data-acum="total"></td>';
+      '<td class="tot sep" data-acum="total"></td>';
     body.appendChild(tr);
   }
   body.querySelectorAll('input').forEach(inp => {
-    attachCurrencyFormatting(inp);
+    attachCurrencyFormatting(inp, fmtNum);
     inp.addEventListener('input', () => {
       const i = parseInt(inp.dataset.day, 10);
       mesSel()[inp.dataset.casino][i] = parseARSInput(inp.value);
@@ -949,13 +963,13 @@ function renderCalculos() {
   document.querySelectorAll('#entries tr[data-row]').forEach(tr => {
     const i = parseInt(tr.dataset.row, 10);
     tr.querySelector('.dchip').classList.toggle('finde', esFinde(m, i));
-    tr.querySelector('[data-cell="central"]').className = 'in ' + colorC(m.central[i]);
-    tr.querySelector('[data-cell="tigre"]').className = 'in ' + colorT(m.tigre[i]);
-    tr.querySelector('[data-acum="central"]').textContent = calc.acumC[i] !== null ? fmtMoney(calc.acumC[i]) : '';
-    tr.querySelector('[data-acum="tigre"]').textContent = calc.acumT[i] !== null ? fmtMoney(calc.acumT[i]) : '';
+    tr.querySelector('[data-cell="central"]').className = 'in sep ' + colorC(m.central[i]);
+    tr.querySelector('[data-cell="tigre"]').className = 'in sep ' + colorT(m.tigre[i]);
+    tr.querySelector('[data-acum="central"]').textContent = calc.acumC[i] !== null ? fmtNum(calc.acumC[i]) : '';
+    tr.querySelector('[data-acum="tigre"]').textContent = calc.acumT[i] !== null ? fmtNum(calc.acumT[i]) : '';
     const tot = tr.querySelector('[data-acum="total"]');
     if (calc.dias[i] !== null) {
-      tot.textContent = fmtMoney(calc.dias[i]);
+      tot.textContent = fmtNum(calc.dias[i]);
       tot.style.color = '';
     } else if (hay(m.central[i]) !== hay(m.tigre[i])) {
       tot.textContent = 'falta ' + (hay(m.central[i]) ? 'Tigre' : 'Central');
