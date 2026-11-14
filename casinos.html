@@ -35,10 +35,11 @@
   --gold: #93701F;
   --gold-bg: #F1E7CE;
   /* colores de la planilla para el mejor / peor día de cada casino */
-  --top: #CFF2DC;
-  --top-1: #2FC45F;
-  --bot: #F8D5BE;
-  --bot-1: #F0A77A;
+  /* bien saturados para que se distingan del fondo crema y verde de las filas */
+  --top: #86D6A0;
+  --top-1: #15803D;
+  --bot: #F4A574;
+  --bot-1: #C2410C;
   --radius: 10px;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -173,7 +174,8 @@ table.carga td.in.top   { background: var(--top); }
 table.carga td.in.bot   { background: var(--bot); }
 table.carga td.in.top-1 { background: var(--top-1); }
 table.carga td.in.bot-1 { background: var(--bot-1); }
-table.carga td.in.top-1 input, table.carga td.in.bot-1 input { font-weight: 600; }
+table.carga td.in.top-1 input, table.carga td.in.bot-1 input { font-weight: 700; color: #fff; }
+table.carga td.in.top-1 input:focus, table.carga td.in.bot-1 input:focus { color: var(--ink); }
 table.carga input {
   width: 100%; min-width: 88px;
   font-family: inherit; font-size: 13.5px; font-variant-numeric: tabular-nums;
