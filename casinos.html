@@ -1201,12 +1201,14 @@ function drawChart(monthDias, yearAgoDias, inflacion) {
 
 // -- promedio de cada día de la semana, en pesos de hoy --
 // Inflación mensual del INDEC (%). Se completa sola con lo último publicado
-// (api.argentinadatos.com) cuando hay conexión; los meses que todavía no se
-// publicaron se estiman con la inflación interanual cargada en la página.
+// (api.argentinadatos.com) cuando hay conexión. Todo se lleva a pesos del
+// último mes publicado; los días posteriores quedan sin ajustar.
 const IPC_BASE = {
   '2024-12': 2.7,
   '2025-01': 2.2, '2025-02': 2.4, '2025-03': 3.7, '2025-04': 2.8, '2025-05': 1.5, '2025-06': 1.6,
-  '2025-07': 1.9, '2025-08': 1.9, '2025-09': 2.1, '2025-10': 2.3, '2025-11': 2.5, '2025-12': 2.8
+  '2025-07': 1.9, '2025-08': 1.9, '2025-09': 2.1, '2025-10': 2.3, '2025-11': 2.5, '2025-12': 2.8,
+  '2026-01': 2.9, '2026-02': 2.9, '2026-03': 3.4, '2026-04': 2.6, '2026-05': 2.1, '2026-06': 1.9,
+  '2026-07': 2.1, '2026-08': 1.7, '2026-09': 1.9, '2026-10': 2.2
 };
 const IPC_KEY = 'caja_casinos_ipc';
 let ipcMensual = Object.assign({}, IPC_BASE);
@@ -1233,28 +1235,22 @@ const claveMes = (y, m) => y + '-' + String(m).padStart(2, '0');
 function renderSemana() {
   const svg = document.getElementById('semana-svg');
   if (!svg) return;
-  const hoy = new Date();
-  const refY = hoy.getFullYear(), refM = hoy.getMonth() + 1;
   const publicados = Object.keys(ipcMensual).sort();
   const ultimoPublicado = publicados[publicados.length - 1];
-  // estimación para los meses sin dato: la última inflación interanual cargada
-  let interanual = null;
-  for (let k = historial.length - 1; k >= 0 && interanual === null; k--) if (hay(historial[k].inflacion)) interanual = historial[k].inflacion;
-  const estimada = interanual !== null ? (Math.pow(1 + interanual / 100, 1 / 12) - 1) * 100 : ipcMensual[ultimoPublicado];
-  let estimados = 0;
-  // factor para llevar un mes a pesos del mes actual
+  const [refY, refM] = ultimoPublicado.split('-').map(Number);
+  // factor para llevar cada mes a pesos del último mes publicado por el INDEC
   const factores = {};
   let f = 1, y = refY, m = refM;
-  while (y > 2024 || (y === 2024 && m >= 1)) {
+  while (claveMes(y, m) >= publicados[0]) {
     factores[claveMes(y, m)] = f;
-    const r = ipcMensual[claveMes(y, m)];
-    f *= 1 + (hay(r) ? r : estimada) / 100;
+    f *= 1 + ipcMensual[claveMes(y, m)] / 100;
     if (--m === 0) { m = 12; y--; }
   }
-  for (let y2 = refY, m2 = refM; claveMes(y2, m2) > ultimoPublicado; ) {
-    estimados++;
-    if (--m2 === 0) { m2 = 12; y2--; }
-  }
+  const factorDe = (yy, mm) => {
+    const k = claveMes(yy, mm);
+    if (k > ultimoPublicado) return 1;
+    return factores[k] || f;
+  };
   // lunes a domingo
   const suma = new Array(7).fill(0), sumaC = new Array(7).fill(0), sumaNom = new Array(7).fill(0), cant = new Array(7).fill(0);
   historial.forEach(mes => {
@@ -1263,7 +1259,7 @@ function renderSemana() {
       const c = mes.central[i], t = mes.tigre[i];
       if (!hay(c) || !hay(t) || Number(c) + Number(t) <= 0) continue;
       const d = cycleDate(mes.fecha, i);
-      const fac = factores[claveMes(d.getFullYear(), d.getMonth() + 1)] || 1;
+      const fac = factorDe(d.getFullYear(), d.getMonth() + 1);
       const w = (d.getDay() + 6) % 7;
       suma[w] += (Number(c) + Number(t)) * fac;
       sumaC[w] += Number(c) * fac;
@@ -1299,12 +1295,10 @@ function renderSemana() {
   const primero = historial.find(mes => calcularMes(mes).ultimoAlgo >= 0);
   document.getElementById('semana-sub').textContent =
     'Central + Tigre, en pesos de ' + MESES_LARGO[refM - 1] + ' ' + refY + (primero ? ', desde ' + mesLabel(primero.fecha) : '') + '.';
-  const [uy, um] = ultimoPublicado.split('-').map(Number);
   document.getElementById('semana-nota').innerHTML =
     '<span style="color:' + COLOR_CENTRAL + ';">■</span> Central <span style="color:' + COLOR_TIGRE + '; margin-left: 0.6rem;">■</span> Tigre<br>' +
-    'Inflación del INDEC hasta ' + MESES_LARGO[um - 1] + ' ' + uy +
-    (estimados ? '; los ' + (estimados === 1 ? 'último mes, estimado' : estimados + ' meses siguientes, estimados') + ' con ' +
-      (interanual !== null ? String(interanual).replace('.', ',') + '% interanual' : estimada.toFixed(1).replace('.', ',') + '% por mes') : '') + '.';
+    'Ajustado con la inflación mensual del INDEC hasta ' + MESES_LARGO[refM - 1] + ' ' + refY +
+    '. Los días posteriores van sin ajustar hasta que se publique el dato.';
 }
 
 // -- torta: cuánto aportó cada casino a lo recaudado en el mes --
