@@ -332,6 +332,29 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   }
 }
 
+/* ---- recuadro de promedios ---- */
+table.prom { font-size: 13.5px; }
+table.prom th { font-size: 12px; font-weight: 600; color: var(--ink-soft); padding: 4px 8px 6px; }
+table.prom th.p-central { border-bottom: 3px solid #2F6E5C; }
+table.prom th.p-tigre { border-bottom: 3px solid #C9A24A; }
+table.prom th.p-tot { border-bottom: 3px solid var(--ink-soft); color: var(--ink); }
+table.prom td { padding: 5px 8px; border-bottom: none; }
+table.prom td.p-tot { font-weight: 700; }
+/* título de cada grupo */
+table.prom tr.p-grupo td {
+  padding: 12px 8px 4px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-mute); background: transparent;
+}
+table.prom tr.p-grupo:first-child td { padding-top: 8px; }
+table.prom tr.p-fila td:first-child { color: var(--ink-soft); }
+/* comparación, como etiquetas verdes / rojas */
+table.prom tr.p-comp td { padding-top: 2px; padding-bottom: 6px; }
+table.prom tr.p-comp td:first-child { font-size: 12px; color: var(--ink-mute); font-style: italic; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.pos { background: var(--teal-bg); color: var(--teal); }
+.pill.neg { background: var(--rust-bg); color: var(--rust); }
+
 /* botón y ventana flotante del gráfico */
 .btn-grafico { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 13.5px; padding: 6px 12px; }
 .btn-grafico svg { width: 16px; height: 16px; }
@@ -492,8 +515,8 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
     <details id="det-promedios">
       <summary><h2 style="display:inline;">Promedios del mes</h2></summary>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th></th><th>Central</th><th>Tigre</th><th>Total</th></tr></thead>
+        <table class="prom">
+          <thead><tr><th></th><th class="p-central">Central</th><th class="p-tigre">Tigre</th><th class="p-tot">Total</th></tr></thead>
           <tbody id="promedios-body"></tbody>
         </table>
       </div>
@@ -1057,20 +1080,28 @@ function renderPromedios(m, calc) {
     const pc = promedio(c), pt = promedio(t);
     prom[g] = [pc, pt, pc !== null && pt !== null ? pc + pt : null];
   }
-  const fila = (label, vals) => '<tr><td>' + label + '</td>' + vals.map(v => '<td>' + fmtMoney(v) + '</td>').join('') + '</tr>';
-  const filaPct = (label, a, b) => '<tr><td style="color: var(--ink-mute);">' + label + '</td>' +
+  // montos en millones ("7,59 M"): se leen y comparan más fácil
+  const mill = v => hay(v) ? (v / 1e6).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' M' : '—';
+  const celdas = vals => vals.map((v, k) => '<td' + (k === 2 ? ' class="p-tot"' : '') + ' title="' + fmtMoney(v) + '">' + mill(v) + '</td>').join('');
+  const grupo = label => '<tr class="p-grupo"><td colspan="4">' + label + '</td></tr>';
+  const fila = (label, vals) => '<tr class="p-fila"><td>' + label + '</td>' + celdas(vals) + '</tr>';
+  const filaPct = (label, a, b) => '<tr class="p-comp"><td>' + label + '</td>' +
     a.map((v, k) => {
       const p = v && b[k] ? b[k] / v - 1 : null;
-      return '<td class="' + (p === null ? '' : p >= 0 ? 'pos' : 'neg') + '">' + fmtPct(p) + '</td>';
+      const pill = p === null ? '—' : '<span class="pill ' + (p >= 0 ? 'pos' : 'neg') + '">' + fmtPct(p) + '</span>';
+      return '<td' + (k === 2 ? ' class="p-tot"' : '') + '>' + pill + '</td>';
     }).join('') + '</tr>';
   document.getElementById('promedios-body').innerHTML =
-    fila('Promedio diario', prom.todos) +
+    grupo('Promedio por día') +
+    fila('Todo el mes', prom.todos) +
+    grupo('Semana y fin de semana') +
     fila('Días de semana', prom.semana) +
     fila('Fin de semana', prom.finde) +
-    filaPct('finde vs. semana', prom.semana, prom.finde) +
+    filaPct('diferencia', prom.semana, prom.finde) +
+    grupo('Por quincena') +
     fila('1.ª quincena', prom.q1) +
     fila('2.ª quincena', prom.q2) +
-    filaPct('2.ª vs. 1.ª', prom.q1, prom.q2);
+    filaPct('diferencia', prom.q1, prom.q2);
 }
 
 function drawChart(monthDias, yearAgoDias, inflacion) {
