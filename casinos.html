@@ -179,6 +179,10 @@ table.carga td.d { text-align: left; padding-left: 2px; }
 table.carga td.calc { color: var(--ink-mute); font-size: 12.5px; }
 table.carga td.tot { font-weight: 700; background: #F1EEE4; }
 table.carga th.th-tot { background: #F1EEE4; }
+/* último día cargado: recuadro suave para saber dónde seguir */
+table.carga tr.ultimo td { box-shadow: inset 0 1.5px 0 #5B5E56, inset 0 -1.5px 0 #5B5E56; }
+table.carga tr.ultimo td:first-child { box-shadow: inset 0 1.5px 0 #5B5E56, inset 0 -1.5px 0 #5B5E56, inset 1.5px 0 0 #5B5E56; }
+table.carga tr.ultimo td:last-child { box-shadow: inset 0 1.5px 0 #5B5E56, inset 0 -1.5px 0 #5B5E56, inset -1.5px 0 0 #5B5E56; }
 table.carga td.in { padding: 1px 2px; }
 table.carga td.in.top   { background: var(--top); }
 table.carga td.in.bot   { background: var(--bot); }
@@ -305,6 +309,14 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   table.carga td { padding: 0 8px; line-height: 1.3; }
   table.carga td.in { padding: 0 2px; }
   table.carga input { padding: 2px 6px; }
+  /* letra más grande en PC, aprovechando el lugar */
+  table.carga, table.carga input { font-size: 14.5px; }
+  table.carga input { padding: 1px 6px; }
+  table.carga td.calc { font-size: 13px; }
+  table.carga th { font-size: 12.5px; }
+  table.carga th.grupo { font-size: 13px; }
+  .dchip { font-size: 13.5px; line-height: 1.35; }
+  .dchip .wd { font-size: 11.5px; }
   table.carga th { padding: 3px 8px; }
   .dchip { padding: 0 7px; line-height: 1.45; }
   #panel-carga .nota-carga { margin-top: 0.4rem !important; font-size: 12px; }
@@ -963,6 +975,7 @@ function renderCalculos() {
   document.querySelectorAll('#entries tr[data-row]').forEach(tr => {
     const i = parseInt(tr.dataset.row, 10);
     tr.querySelector('.dchip').classList.toggle('finde', esFinde(m, i));
+    tr.classList.toggle('ultimo', i === calc.ultimoAlgo);
     tr.querySelector('[data-cell="central"]').className = 'in sep ' + colorC(m.central[i]);
     tr.querySelector('[data-cell="tigre"]').className = 'in sep ' + colorT(m.tigre[i]);
     tr.querySelector('[data-acum="central"]').textContent = calc.acumC[i] !== null ? fmtNum(calc.acumC[i]) : '';
