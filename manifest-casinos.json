@@ -1,0 +1,18 @@
+{
+  "id": "./casinos.html",
+  "name": "Recaudación por casino",
+  "short_name": "Casinos",
+  "description": "Carga diaria de Central y Tigre y proyección de la caja de empleados.",
+  "lang": "es",
+  "start_url": "./casinos.html",
+  "scope": "./casinos.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F1F0EC",
+  "theme_color": "#2F6E5C",
+  "icons": [
+    { "src": "icon-casinos-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-casinos-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-casinos-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
