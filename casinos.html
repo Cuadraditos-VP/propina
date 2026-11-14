@@ -350,6 +350,11 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 #panel-mes .controls.ajustes .lbl-larga { display: none; }
 #panel-mes .controls.ajustes label + input, #panel-mes .controls.ajustes label[for="inflacion"] { margin-left: auto; }
 
+/* foco visible al moverse con el teclado */
+#historia-body tr:focus { outline: 2px solid var(--teal); outline-offset: -2px; }
+#historia-body tr:hover td { background: var(--bg); }
+.mes-nav:focus { outline: none; }
+
 /* ---- recuadro de promedios ---- */
 table.prom { font-size: 13.5px; }
 table.prom th { font-size: 12px; font-weight: 600; color: var(--ink-soft); padding: 4px 8px 6px; }
@@ -1215,6 +1220,8 @@ function buildHistoria() {
     const ultT = c.ultimoAlgo >= 0 ? c.acumT[c.ultimoAlgo] : null;
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
+    tr.tabIndex = 0;
+    tr.dataset.idx = idx;
     if (idx === selIdx) tr.style.fontWeight = '600';
     const { year, month } = monthParts(m.fecha);
     tr.innerHTML = '<td>' + MESES[month - 1] + ' ' + year + '</td><td>' + fmtMillones(ultC) + '</td><td>' + fmtMillones(ultT) + '</td><td>' +
@@ -1223,6 +1230,15 @@ function buildHistoria() {
       selIdx = idx;
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      enfocarFilaHistorial(false);
+    });
+    // con la fila elegida, las flechas del teclado mueven de mes en mes
+    tr.addEventListener('keydown', ev => {
+      const delta = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[ev.key];
+      if (ev.key === 'Enter') { ev.preventDefault(); tr.click(); return; }
+      if (!delta) return;
+      ev.preventDefault();
+      if (irAMes(delta)) enfocarFilaHistorial(true);
     });
     body.appendChild(tr);
   }
@@ -1278,8 +1294,34 @@ document.getElementById('ver-todo').addEventListener('click', ev => {
   document.querySelector('table.carga').classList.add('ver-todo');
   ev.target.hidden = true;
 });
-document.getElementById('mes-ant').addEventListener('click', () => { if (selIdx > 0) { selIdx--; render(); } });
-document.getElementById('mes-sig').addEventListener('click', () => { if (selIdx < historial.length - 1) { selIdx++; render(); } });
+// -- moverse de mes en mes: con las flechitas y, después de tocarlas, con
+// las flechas del teclado (izquierda = mes anterior, derecha = siguiente) --
+function irAMes(delta) {
+  const nuevo = selIdx + delta;
+  if (nuevo < 0 || nuevo > historial.length - 1) return false;
+  selIdx = nuevo;
+  render();
+  return true;
+}
+function enfocarFilaHistorial(conScroll) {
+  const fila = document.querySelector('#historia-body tr[data-idx="' + selIdx + '"]');
+  if (fila) fila.focus({ preventScroll: !conScroll });
+}
+const mesNav = document.querySelector('.mes-nav');
+mesNav.tabIndex = -1;
+// si la flechita queda deshabilitada (primer o último mes) el foco pasa a la
+// otra o al bloque del mes, así el teclado sigue funcionando
+function mantenerFocoMes(preferida) {
+  const btn = document.getElementById(preferida);
+  const otra = document.getElementById(preferida === 'mes-ant' ? 'mes-sig' : 'mes-ant');
+  (!btn.disabled ? btn : !otra.disabled ? otra : mesNav).focus();
+}
+document.getElementById('mes-ant').addEventListener('click', () => { irAMes(-1); mantenerFocoMes('mes-ant'); });
+document.getElementById('mes-sig').addEventListener('click', () => { irAMes(1); mantenerFocoMes('mes-sig'); });
+mesNav.addEventListener('keydown', ev => {
+  if (ev.key === 'ArrowLeft') { ev.preventDefault(); irAMes(-1); mantenerFocoMes('mes-ant'); }
+  else if (ev.key === 'ArrowRight') { ev.preventDefault(); irAMes(1); mantenerFocoMes('mes-sig'); }
+});
 
 document.getElementById('ventana').addEventListener('change', () => {
   try { localStorage.setItem('caja_casinos_ventana', document.getElementById('ventana').value); } catch (e) {}
