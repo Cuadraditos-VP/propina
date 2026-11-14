@@ -272,7 +272,10 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 
 /* ---- pantallas anchas: la tabla al centro, entera; el resto a los costados ---- */
 @media (min-width: 1180px) {
-  .wrap { max-width: 1680px; padding: 0.5rem 1.25rem 2rem; }
+  .wrap { max-width: 1680px; padding: 0.5rem 1.25rem 1rem; }
+  /* los recuadros se centran a lo alto de la pantalla (el título queda arriba) */
+  .wrap { min-height: 100vh; display: flex; flex-direction: column; }
+  .layout { margin-top: auto; margin-bottom: auto; width: 100%; }
   header { margin-bottom: 0.5rem; padding: 0.3rem 0; }
   header h1 { font-size: 34px; }
   .eyebrow-pie { margin-top: 0; }
@@ -360,6 +363,10 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 #historia-body tr:focus { outline: 2px solid var(--teal); outline-offset: -2px; }
 #historia-body tr:hover td { background: var(--bg); }
 .mes-nav:focus { outline: none; }
+
+/* historial con su propia barra en PC, para no pasar del alto de la tabla */
+#historial-scroll { overflow-y: auto; }
+#historial-scroll thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
 
 /* ---- recuadro de promedios ---- */
 table.prom { font-size: 13.5px; }
@@ -557,7 +564,7 @@ table.prom tr.p-comp td:first-child { font-size: 12px; color: var(--ink-mute); f
   <div class="panel">
     <details id="det-historial">
       <summary><h2 style="display:inline;">Historial de meses</h2></summary>
-      <div class="table-scroll">
+      <div class="table-scroll" id="historial-scroll">
         <table>
           <thead><tr><th>Mes</th><th>Central</th><th>Tigre</th><th>Total</th><th>Resultado final</th></tr></thead>
           <tbody id="historia-body"></tbody>
@@ -1221,6 +1228,21 @@ function fmtMillones(v) {
   return '$ ' + (v / 1e6).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M';
 }
 
+// En PC el historial no pasa del borde de abajo de la tabla del centro:
+// si tiene más meses, se desplaza dentro de su recuadro.
+function ajustarHistorial() {
+  const caja = document.getElementById('historial-scroll');
+  if (!caja) return;
+  caja.style.maxHeight = '';
+  if (!window.matchMedia('(min-width: 1180px)').matches || !document.getElementById('det-historial').open) return;
+  const fondoTabla = document.querySelector('.col-centro').getBoundingClientRect().bottom;
+  const panel = caja.closest('.panel');
+  const margenAbajo = panel.getBoundingClientRect().bottom - caja.getBoundingClientRect().bottom + 16;
+  const disponible = fondoTabla - caja.getBoundingClientRect().top - margenAbajo;
+  caja.style.maxHeight = Math.max(160, Math.floor(disponible)) + 'px';
+}
+window.addEventListener('resize', ajustarHistorial);
+
 function buildHistoria() {
   const body = document.getElementById('historia-body');
   body.innerHTML = '';
@@ -1253,6 +1275,7 @@ function buildHistoria() {
     });
     body.appendChild(tr);
   }
+  ajustarHistorial();
 }
 
 // -- ventana flotante del gráfico --
@@ -1453,11 +1476,14 @@ const anchaDeEntrada = window.matchMedia('(min-width: 1180px)').matches;
   det.open = guardado === null ? porDefecto : guardado === '1';
   det.addEventListener('toggle', () => {
     try { localStorage.setItem(clave, det.open ? '1' : '0'); } catch (e) {}
+    ajustarHistorial();
   });
 });
 
 render();
 iniciarNube();
+// cuando terminan de cargar las tipografías cambian un poco los altos
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarHistorial);
 
 // app instalable (PWA): el service worker solo controla esta página
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
