@@ -170,7 +170,6 @@ table.carga tr.prev td { background: var(--teal-bg); border-bottom-color: #C9DDD
 table.carga td.d { text-align: left; padding-left: 2px; }
 table.carga td.calc { color: var(--ink-soft); }
 table.carga td.tot { font-weight: 600; }
-table.carga td.pct { font-size: 12px; }
 table.carga td.in { padding: 1px 2px; }
 table.carga td.in.top   { background: var(--top); }
 table.carga td.in.bot   { background: var(--bot); }
@@ -247,7 +246,6 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   /* tabla: se ocultan los días que faltan, salvo que se pida ver todo el mes */
   table.carga:not(.ver-todo) tr.lejos { display: none; }
   #ver-todo:not([hidden]) { display: inline-block !important; }
-  table.carga .pct { display: none; }
   .dchip { padding: 2px 4px; gap: 3px; }
   table.carga td { padding: 1px 2px; }
   table.carga td.tot { font-size: 12.5px; }
@@ -444,14 +442,13 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
             <th style="text-align:left;">Día</th>
             <th class="grupo">CENTRAL</th><th class="acum-c"></th>
             <th class="grupo">TIGRE</th><th class="acum-c"></th>
-            <th class="grupo">TOTAL</th><th class="pct"></th>
+            <th class="grupo">TOTAL</th>
           </tr>
           <tr class="head-desk">
             <th rowspan="2" style="text-align:left;">Día</th>
             <th colspan="2" class="grupo">CENTRAL</th>
             <th colspan="2" class="grupo">TIGRE</th>
             <th rowspan="2" class="grupo">TOTAL</th>
-            <th rowspan="2" class="pct" title="Total acumulado vs. el mismo día del año anterior">vs. año ant.</th>
           </tr>
           <tr class="head-desk">
             <th>Diario</th><th class="acum-c">Acumulado</th>
@@ -808,8 +805,7 @@ function renderTabla() {
       '<td class="calc acum-c" data-acum="central"></td>' +
       '<td class="in" data-cell="tigre"><input type="text" inputmode="numeric" data-day="' + i + '" data-casino="tigre" value="' + formatARSInput(m.tigre[i]) + '" placeholder="$ 0" aria-label="Tigre, diario del ' + d.getDate() + '"></td>' +
       '<td class="calc acum-c" data-acum="tigre"></td>' +
-      '<td class="tot" data-acum="total"></td>' +
-      '<td class="pct" data-acum="pct"></td>';
+      '<td class="tot" data-acum="total"></td>';
     body.appendChild(tr);
   }
   body.querySelectorAll('input').forEach(inp => {
@@ -966,16 +962,6 @@ function renderCalculos() {
       tot.style.color = 'var(--ink-mute)';
     } else {
       tot.textContent = '';
-    }
-    const pctEl = tr.querySelector('[data-acum="pct"]');
-    const b = calc.dias[i] !== null ? valorEnDia(yaDias, i) : null;
-    if (b) {
-      const p = calc.dias[i] / b - 1;
-      pctEl.textContent = fmtPct(p);
-      pctEl.className = 'pct ' + (p >= 0 ? 'pos' : 'neg');
-    } else {
-      pctEl.textContent = '';
-      pctEl.className = 'pct';
     }
   });
 
