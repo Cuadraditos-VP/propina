@@ -270,8 +270,6 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 
 .note { font-size: 13px; color: var(--ink-mute); }
 #ver-todo { display: none; margin-top: 0.5rem; font-size: 13px; padding: 5px 12px; }
-/* filas de relleno para que la tabla mida siempre 31 días (solo en PC) */
-table.carga tr.relleno { display: none; }
 
 /* ---- pantallas anchas: la tabla al centro, entera; el resto a los costados ---- */
 @media (min-width: 1180px) {
@@ -301,7 +299,6 @@ table.carga tr.relleno { display: none; }
   .col-centro { grid-area: centro; }
   .col-der { grid-area: der; }
   .col-pie { grid-area: pie; }
-  table.carga tr.relleno { display: table-row; visibility: hidden; }
   .col-pie .foot { margin-top: 0.4rem; font-size: 12px; }
   .layout .panel { padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
   .layout .panel .sub { margin-bottom: 0.75rem; }
@@ -904,6 +901,19 @@ function iniciarNube() {
 function render() {
   renderTabla();
   renderCalculos();
+  reservarAltoCentro();
+  ajustarHistorial();
+}
+// En PC la columna del centro reserva siempre el lugar de un mes de 31 días
+// (sin dibujar filas de más): así un mes más corto no mueve los otros recuadros.
+function reservarAltoCentro() {
+  const col = document.querySelector('.col-centro');
+  col.style.minHeight = '';
+  if (!window.matchMedia('(min-width: 1180px)').matches) return;
+  const filas = document.querySelectorAll('#entries tr[data-row]');
+  if (!filas.length || filas.length >= 31) return;
+  const alto = filas[0].getBoundingClientRect().height;
+  col.style.minHeight = (col.getBoundingClientRect().height + (31 - filas.length) * alto) + 'px';
 }
 
 // arma la tabla de carga (inputs) del mes elegido
@@ -935,20 +945,7 @@ function renderTabla() {
       '<td class="tot sep" data-acum="total"></td>';
     body.appendChild(tr);
   }
-  // en PC la tabla siempre ocupa 31 filas (las que sobran quedan invisibles),
-  // así los recuadros no cambian de lugar entre meses de distinto largo
-  for (let i = n; i < 31; i++) {
-    const tr = document.createElement('tr');
-    tr.className = 'relleno';
-    tr.setAttribute('aria-hidden', 'true');
-    tr.innerHTML =
-      '<td class="d"><span class="dchip"><span class="wd">lu</span><span>30</span></span></td>' +
-      '<td class="in sep"><input type="text" tabindex="-1" disabled></td><td class="calc acum-c"></td>' +
-      '<td class="in sep"><input type="text" tabindex="-1" disabled></td><td class="calc acum-c"></td>' +
-      '<td class="tot sep"></td>';
-    body.appendChild(tr);
-  }
-  body.querySelectorAll('input:not([disabled])').forEach(inp => {
+  body.querySelectorAll('input').forEach(inp => {
     attachCurrencyFormatting(inp, fmtNum);
     inp.addEventListener('input', () => {
       const i = parseInt(inp.dataset.day, 10);
@@ -1402,7 +1399,7 @@ function ajustarHistorial() {
   const disponible = fondoTabla - caja.getBoundingClientRect().top - margenAbajo;
   caja.style.maxHeight = Math.max(160, Math.floor(disponible)) + 'px';
 }
-window.addEventListener('resize', ajustarHistorial);
+window.addEventListener('resize', () => { reservarAltoCentro(); ajustarHistorial(); });
 
 function buildHistoria() {
   const body = document.getElementById('historia-body');
@@ -1645,7 +1642,7 @@ render();
 iniciarNube();
 actualizarIPC();
 // cuando terminan de cargar las tipografías cambian un poco los altos
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarHistorial);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { reservarAltoCentro(); ajustarHistorial(); });
 
 // app instalable (PWA): el service worker solo controla esta página
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
