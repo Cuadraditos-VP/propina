@@ -4,10 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Recaudación por casino</title>
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-casinos-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon-casinos.png">
+<link rel="manifest" href="manifest-casinos.json">
 <meta name="theme-color" content="#2F6E5C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Casinos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -1107,6 +1111,13 @@ try {
 
 render();
 iniciarNube();
+
+// app instalable (PWA): el service worker solo controla esta página
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw-casinos.js', { scope: './casinos.html' }).catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
