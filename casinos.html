@@ -57,7 +57,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-header { margin-bottom: 1.5rem; }
+/* el título queda fijo arriba al bajar por la página */
+header { margin-bottom: 1rem; position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 0.5rem 0; }
 header .eyebrow { font-size: 13px; color: var(--ink-mute); margin: 0 0 0.35rem; }
 header h1 {
   font-family: 'Fraunces', serif;
@@ -259,8 +260,8 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 
 /* ---- pantallas anchas: la tabla al centro, entera; el resto a los costados ---- */
 @media (min-width: 1180px) {
-  .wrap { max-width: 1680px; padding: 1rem 1.25rem 2rem; }
-  header { margin-bottom: 0.75rem; display: flex; align-items: baseline; gap: 1rem; }
+  .wrap { max-width: 1680px; padding: 0.5rem 1.25rem 2rem; }
+  header { margin-bottom: 0.6rem; padding: 0.4rem 0; display: flex; align-items: baseline; gap: 1rem; }
   header .eyebrow { order: 2; margin: 0; }
   header h1 { font-size: 26px; }
   .layout {
@@ -1110,7 +1111,7 @@ function buildHistoria() {
     tr.addEventListener('click', () => {
       selIdx = idx;
       render();
-      document.getElementById('panel-mes').scrollIntoView({ behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     body.appendChild(tr);
   }
