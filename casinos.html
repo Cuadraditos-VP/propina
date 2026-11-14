@@ -335,7 +335,13 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 
 /* ---- recuadro de la izquierda ---- */
 .acciones { display: flex; gap: 0.4rem; flex-shrink: 0; }
-#mes-sub:empty { display: none; }
+/* el recuadro tiene siempre el mismo tamaño, sea cual sea el mes:
+   - el nombre del mes ocupa un ancho fijo (las flechitas no se corren)
+   - los textos chicos tienen su lugar reservado aunque estén vacíos */
+#mes-sub { display: none; }
+#mes-titulo { width: 8.3em; text-align: center; white-space: nowrap; }
+#panel-mes .hero-num .band { min-height: 2.7em; }
+#resultado-final { min-height: 1.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px !important; }
 #panel-mes .hero-num .label { font-size: 12px; }
 /* ajustes (promediar / inflación): al final, más chicos y separados de los resultados */
 #panel-mes .controls.ajustes {
@@ -1039,18 +1045,15 @@ function renderCalculos() {
   const fechaCorta = i => { const d = cycleDate(m.fecha, i); return d.getDate() + ' ' + MESES[d.getMonth()]; };
   document.getElementById('esperado-label').textContent =
     res.last >= 0 ? 'Proyección al ' + fechaCorta(res.last) : 'Proyección';
-  // el renglón de abajo del mes solo aparece si hay algo que avisar
-  document.getElementById('mes-sub').textContent = !ya
-    ? 'Sin el mismo mes del año anterior para comparar'
-    : res.last >= 0
-      ? ''
-      : calc.ultimo >= 0
-        ? 'Cargado hasta el ' + fechaCalendarioLarga(m.fecha, calc.ultimo) + ' (todavía sin comparación con el año anterior)'
-        : 'Sin datos cargados todavía';
   document.getElementById('esperado').textContent = fmtMoney(res.esperado);
-  document.getElementById('banda').textContent = res.banda && res.banda[0] !== res.banda[1]
-    ? 'entre ' + fmtMoney(res.banda[0]) + ' y ' + fmtMoney(res.banda[1])
-    : '';
+  // debajo del número: el rango, o el aviso de por qué no hay proyección
+  document.getElementById('banda').textContent = res.banda
+    ? (res.banda[0] !== res.banda[1] ? 'entre ' + fmtMoney(res.banda[0]) + ' y ' + fmtMoney(res.banda[1]) : '')
+    : !ya
+      ? 'sin el mismo mes del año anterior'
+      : calc.ultimo >= 0
+        ? 'todavía sin comparación'
+        : 'sin datos cargados todavía';
 
   const vsEl = document.getElementById('vs-anterior');
   const vsSub = document.getElementById('vs-anterior-sub');
@@ -1073,11 +1076,11 @@ function renderCalculos() {
   if (hay(m.total) && res.esperado) {
     const dif = m.total / res.esperado - 1;
     rf.innerHTML = 'Resultado final: <strong style="color: var(--ink);">' + fmtMoney(m.total) + '</strong> · ' +
-      '<span style="color: ' + (dif >= 0 ? 'var(--teal)' : 'var(--rust)') + ';">' + fmtPct(dif) + '</span> vs. la proyección';
+      '<span style="color: ' + (dif >= 0 ? 'var(--teal)' : 'var(--rust)') + ';">' + fmtPct(dif) + '</span> vs. proyección';
   } else if (hay(m.total)) {
     rf.innerHTML = 'Resultado final: <strong style="color: var(--ink);">' + fmtMoney(m.total) + '</strong>';
   } else {
-    rf.textContent = '';
+    rf.innerHTML = 'Resultado final: <span style="color: var(--ink-mute);">pendiente</span>';
   }
 
   drawChart(calc.dias, yaDias, m.inflacion);
@@ -1177,8 +1180,16 @@ function drawPizza(m, calc) {
   const c = k >= 0 ? (calc.acumC[k] || 0) : 0;
   const t = k >= 0 ? (calc.acumT[k] || 0) : 0;
   const total = c + t;
-  if (total <= 0) { caja.style.display = 'none'; return; }
   caja.style.display = '';
+  if (total <= 0) {
+    // sin datos: torta gris, para que el recuadro no cambie de tamaño
+    document.getElementById('pizza-svg').innerHTML = '<circle r="1" fill="#E2E0D8"/>';
+    const vacia = (color, nombre) =>
+      '<div class="fila"><span class="punto" style="background: ' + color + ';"></span><div>' +
+      '<div><span class="pct-grande">—</span>' + nombre + '</div><div class="monto">sin datos</div></div></div>';
+    document.getElementById('pizza-leyenda').innerHTML = vacia(COLOR_CENTRAL, 'Central') + vacia(COLOR_TIGRE, 'Tigre');
+    return;
+  }
   const fc = c / total;
   const svg = document.getElementById('pizza-svg');
   if (fc <= 0 || fc >= 1) {
