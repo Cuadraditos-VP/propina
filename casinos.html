@@ -202,6 +202,46 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
   table.carga td { padding: 1px 3px; }
 }
 @media (max-width: 520px) {
+  /* versión compacta para el celular */
+  .wrap { padding-top: 1rem; padding-bottom: 2rem; }
+  header { margin-bottom: 0.8rem; }
+  header .eyebrow { display: none; }
+  header h1 { font-size: 22px; }
+  .panel { margin-bottom: 0.8rem; }
+  .panel h2 { font-size: 17px; }
+  .panel-header-row { margin-bottom: 0.6rem; }
+  .mes-nav button { width: 28px; height: 28px; font-size: 14px; }
+  .wa-btn { width: 34px; height: 34px; }
+  .hero-row { flex-wrap: nowrap; gap: 0.8rem; margin-bottom: 0.8rem; align-items: flex-start; }
+  .hero-num { min-width: 0; flex: 1 1 0; }
+  .hero-num .label { font-size: 12px; margin-bottom: 0; }
+  .hero-num .value { font-size: 28px; }
+  .hero-num-chica .value { font-size: 20px; line-height: 1.6; }
+  .hero-num .band { font-size: 12px; line-height: 1.35; }
+  #resultado-final { margin: -0.3rem 0 0.8rem !important; font-size: 12.5px !important; }
+  .pizza { padding: 0.6rem 0.75rem; margin-bottom: 0.8rem; gap: 0.8rem; }
+  .pizza svg { width: 58px; height: 58px; }
+  .pizza .titulo { font-size: 12px; margin-bottom: 0.2rem; }
+  .pizza #pizza-leyenda { display: flex; gap: 0.8rem; }
+  .pizza .monto { white-space: nowrap; }
+  .pizza .titulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pizza #pizza-leyenda .fila + .fila { margin-top: 0; }
+  .pizza .fila { font-size: 13px; }
+  .pizza .monto { font-size: 12px; }
+  .controls { gap: 0.4rem 0.5rem; margin: 0 0 0.6rem; flex-wrap: nowrap; }
+  .controls label { font-size: 12px; line-height: 1.2; }
+  .controls select, .controls input { font-size: 13px; padding: 5px 6px; }
+  .controls select { min-width: 0; flex: 1 1 auto; }
+  .controls input { width: 56px !important; flex-shrink: 0; }
+  .lbl-larga { display: none; }
+  .nota-carga { display: none; }
+  .cierre { margin-top: 0.6rem; padding: 0.6rem 0.75rem; gap: 0.4rem 0.6rem; }
+  .cierre { flex-wrap: nowrap; }
+  .cierre label { font-size: 12.5px; line-height: 1.3; }
+  .cierre input { width: 130px; padding: 5px 8px; font-size: 13px; }
+  /* tabla: se ocultan los días que faltan, salvo que se pida ver todo el mes */
+  table.carga:not(.ver-todo) tr.lejos { display: none; }
+  #ver-todo:not([hidden]) { display: inline-block !important; }
   table.carga .pct { display: none; }
   .dchip { padding: 2px 4px; gap: 3px; }
   table.carga td { padding: 1px 2px; }
@@ -215,6 +255,7 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
 .cierre input { width: 160px; }
 
 .note { font-size: 13px; color: var(--ink-mute); }
+#ver-todo { display: none; margin-top: 0.5rem; font-size: 13px; padding: 5px 12px; }
 
 /* gráfico de torta Central vs. Tigre */
 .pizza { display: flex; align-items: center; gap: 1.25rem; margin: 0 0 1.25rem; padding: 0.9rem 1rem; background: var(--bg); border-radius: 8px; }
@@ -282,7 +323,7 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
     </div>
 
     <div class="controls" id="controles-fila">
-      <label for="ventana">Promediar últimos</label>
+      <label for="ventana">Promediar<span class="lbl-larga"> últimos</span></label>
       <select id="ventana">
         <option value="1">1 día</option>
         <option value="3" selected>3 días</option>
@@ -293,7 +334,7 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
         <option value="20">20 días</option>
         <option value="all">Todos los días cargados</option>
       </select>
-      <label for="inflacion">Inflación interanual</label>
+      <label for="inflacion">Inflación<span class="lbl-larga"> interanual</span></label>
       <input type="text" inputmode="decimal" id="inflacion" style="width: 80px;" placeholder="45,2">
     </div>
 
@@ -336,9 +377,10 @@ table.carga input:focus { outline: none; background: var(--panel); box-shadow: i
         <tbody id="entries"></tbody>
       </table>
     </div>
-    <p class="note" style="margin: 0.6rem 0 0;">Podés copiar varias filas del Excel y pegarlas de una en la celda del primer día. Tocá el día para marcarlo como fin de semana o víspera de feriado. Se guarda solo.</p>
+    <button type="button" id="ver-todo">Mostrar todo el mes</button>
+    <p class="note nota-carga" style="margin: 0.6rem 0 0;">Podés copiar varias filas del Excel y pegarlas de una en la celda del primer día. Tocá el día para marcarlo como fin de semana o víspera de feriado. Se guarda solo.</p>
     <div class="cierre">
-      <label for="cierre-input">Resultado final del mes (lo que cobra cada empleado)</label>
+      <label for="cierre-input">Resultado final del mes<span class="lbl-larga"> (lo que cobra cada empleado)</span></label>
       <input type="text" inputmode="numeric" id="cierre-input" placeholder="$ 0">
       <span class="note" id="save-note"></span>
     </div>
@@ -635,11 +677,18 @@ function renderTabla() {
   const n = cycleDays(m.fecha);
   const body = document.getElementById('entries');
   body.innerHTML = '';
+  // en el celular se muestran los días cargados y los 3 siguientes
+  const ultimoVisible = Math.max(calcularMes(m).ultimoAlgo + 3, 2);
+  const tabla = body.closest('table');
+  tabla.classList.remove('ver-todo');
+  const btnVerTodo = document.getElementById('ver-todo');
+  btnVerTodo.hidden = ultimoVisible >= n - 1;
   for (let i = 0; i < n; i++) {
     const d = cycleDate(m.fecha, i);
     const tr = document.createElement('tr');
     tr.dataset.row = i;
     if (d.getDate() >= 26) tr.className = 'prev';
+    if (i > ultimoVisible) tr.classList.add('lejos');
     tr.innerHTML =
       '<td class="d"><button type="button" class="dchip" data-chip="' + i + '" title="Tocá para marcar como fin de semana / víspera de feriado">' +
         '<span class="wd">' + DIAS_SEM[d.getDay()] + '</span><span>' + d.getDate() + '</span></button></td>' +
@@ -998,6 +1047,10 @@ function buildHistoria() {
 }
 
 // -- eventos --
+document.getElementById('ver-todo').addEventListener('click', ev => {
+  document.querySelector('table.carga').classList.add('ver-todo');
+  ev.target.hidden = true;
+});
 document.getElementById('mes-ant').addEventListener('click', () => { if (selIdx > 0) { selIdx--; render(); } });
 document.getElementById('mes-sig').addEventListener('click', () => { if (selIdx < historial.length - 1) { selIdx++; render(); } });
 
