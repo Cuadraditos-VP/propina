@@ -5,7 +5,7 @@
 //  - librerías y tipografías externas: la copia guardada, y se actualiza
 //    por detrás;
 //  - la base de datos de Firebase no pasa por acá.
-const CACHE = 'casinos-v1';
+const CACHE = 'casinos-v2';
 const ARCHIVOS = [
   'casinos.html',
   'manifest-casinos.json',

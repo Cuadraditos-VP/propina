@@ -569,6 +569,17 @@ table.prom tr.p-comp td:first-child { font-size: 12px; color: var(--ink-mute); f
   </div>
 
   <div class="panel">
+    <details id="det-semana">
+      <summary><h2 style="display:inline;">Promedio por día de la semana</h2></summary>
+      <p class="sub" id="semana-sub" style="margin: 0.6rem 0 0;"></p>
+      <div class="chart-wrap">
+        <svg id="semana-svg" viewBox="0 0 360 210" style="width: 100%; height: auto;" role="img" aria-label="Recaudación promedio de cada día de la semana, ajustada por inflación"></svg>
+      </div>
+      <p class="note" id="semana-nota" style="margin: 0.5rem 0 0; font-size: 12px; line-height: 1.4;"></p>
+    </details>
+  </div>
+
+  <div class="panel">
     <details id="det-historial">
       <summary><h2 style="display:inline;">Historial de meses</h2></summary>
       <div class="table-scroll" id="historial-scroll">
@@ -1103,6 +1114,7 @@ function renderCalculos() {
     'Recaudación acumulada · ' + mesLabel(m.fecha).replace(/^./, c => c.toUpperCase());
   drawPizza(m, calc);
   renderPromedios(m, calc);
+  renderSemana();
   buildHistoria();
 }
 
@@ -1185,6 +1197,114 @@ function drawChart(monthDias, yearAgoDias, inflacion) {
     '<path d="' + pathFor(yearAgoDias || []) + '" fill="none" stroke="' + muteColor + '" stroke-width="2" stroke-dasharray="5 4"/>' +
     (ajustado ? '<path d="' + pathFor(ajustado) + '" fill="none" stroke="' + goldColor + '" stroke-width="2" stroke-dasharray="1.5 4"/>' : '') +
     '<path d="' + pathFor(monthDias) + '" fill="none" stroke="' + inkColor + '" stroke-width="2.5"/>';
+}
+
+// -- promedio de cada día de la semana, en pesos de hoy --
+// Inflación mensual del INDEC (%). Se completa sola con lo último publicado
+// (api.argentinadatos.com) cuando hay conexión; los meses que todavía no se
+// publicaron se estiman con la inflación interanual cargada en la página.
+const IPC_BASE = {
+  '2024-12': 2.7,
+  '2025-01': 2.2, '2025-02': 2.4, '2025-03': 3.7, '2025-04': 2.8, '2025-05': 1.5, '2025-06': 1.6,
+  '2025-07': 1.9, '2025-08': 1.9, '2025-09': 2.1, '2025-10': 2.3, '2025-11': 2.5, '2025-12': 2.8
+};
+const IPC_KEY = 'caja_casinos_ipc';
+let ipcMensual = Object.assign({}, IPC_BASE);
+try { Object.assign(ipcMensual, JSON.parse(localStorage.getItem(IPC_KEY) || '{}')); } catch (e) {}
+function actualizarIPC() {
+  if (!window.fetch) return;
+  fetch('https://api.argentinadatos.com/v1/finanzas/indices/inflacion')
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(lista => {
+      const nuevos = {};
+      (lista || []).forEach(x => {
+        if (!x || typeof x.fecha !== 'string' || typeof x.valor !== 'number') return;
+        const k = x.fecha.slice(0, 7);
+        if (k >= '2024-12') nuevos[k] = x.valor;
+      });
+      if (!Object.keys(nuevos).length) return;
+      Object.assign(ipcMensual, nuevos);
+      try { localStorage.setItem(IPC_KEY, JSON.stringify(nuevos)); } catch (e) {}
+      renderSemana();
+    })
+    .catch(() => {});
+}
+const claveMes = (y, m) => y + '-' + String(m).padStart(2, '0');
+function renderSemana() {
+  const svg = document.getElementById('semana-svg');
+  if (!svg) return;
+  const hoy = new Date();
+  const refY = hoy.getFullYear(), refM = hoy.getMonth() + 1;
+  const publicados = Object.keys(ipcMensual).sort();
+  const ultimoPublicado = publicados[publicados.length - 1];
+  // estimación para los meses sin dato: la última inflación interanual cargada
+  let interanual = null;
+  for (let k = historial.length - 1; k >= 0 && interanual === null; k--) if (hay(historial[k].inflacion)) interanual = historial[k].inflacion;
+  const estimada = interanual !== null ? (Math.pow(1 + interanual / 100, 1 / 12) - 1) * 100 : ipcMensual[ultimoPublicado];
+  let estimados = 0;
+  // factor para llevar un mes a pesos del mes actual
+  const factores = {};
+  let f = 1, y = refY, m = refM;
+  while (y > 2024 || (y === 2024 && m >= 1)) {
+    factores[claveMes(y, m)] = f;
+    const r = ipcMensual[claveMes(y, m)];
+    f *= 1 + (hay(r) ? r : estimada) / 100;
+    if (--m === 0) { m = 12; y--; }
+  }
+  for (let y2 = refY, m2 = refM; claveMes(y2, m2) > ultimoPublicado; ) {
+    estimados++;
+    if (--m2 === 0) { m2 = 12; y2--; }
+  }
+  // lunes a domingo
+  const suma = new Array(7).fill(0), sumaC = new Array(7).fill(0), sumaNom = new Array(7).fill(0), cant = new Array(7).fill(0);
+  historial.forEach(mes => {
+    const n = cycleDays(mes.fecha);
+    for (let i = 0; i < n; i++) {
+      const c = mes.central[i], t = mes.tigre[i];
+      if (!hay(c) || !hay(t) || Number(c) + Number(t) <= 0) continue;
+      const d = cycleDate(mes.fecha, i);
+      const fac = factores[claveMes(d.getFullYear(), d.getMonth() + 1)] || 1;
+      const w = (d.getDay() + 6) % 7;
+      suma[w] += (Number(c) + Number(t)) * fac;
+      sumaC[w] += Number(c) * fac;
+      sumaNom[w] += Number(c) + Number(t);
+      cant[w]++;
+    }
+  });
+  const prom = suma.map((v, w) => cant[w] ? v / cant[w] : null);
+  const promC = sumaC.map((v, w) => cant[w] ? v / cant[w] : null);
+  const nombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const cortos = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const W = 360, H = 210, padL = 6, padR = 6, padT = 22, padB = 40;
+  const maxV = Math.max(...prom.filter(hay), 1);
+  const slot = (W - padL - padR) / 7, barW = slot * 0.62;
+  const yv = v => padT + (H - padT - padB) * (1 - v / maxV);
+  const mill = v => (v / 1e6).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M';
+  let html = '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="#B9B6AA" stroke-width="1"/>';
+  prom.forEach((v, w) => {
+    const cx = padL + slot * (w + 0.5), x0 = (cx - barW / 2).toFixed(1);
+    html += '<text x="' + cx.toFixed(1) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="12" font-weight="500" fill="#1F241F">' + cortos[w] + '</text>';
+    if (v === null) return;
+    const yT = yv(v), yC = yv(promC[w]);
+    const tip = nombres[w] + ': ' + fmtMoney(v) + ' promedio en pesos de hoy (Central ' + fmtMoney(promC[w]) + ', Tigre ' + fmtMoney(v - promC[w]) +
+      '). Sin ajustar: ' + fmtMoney(sumaNom[w] / cant[w]) + '. ' + cant[w] + ' días.';
+    html += '<g><title>' + tip + '</title>' +
+      '<rect x="' + x0 + '" y="' + yT.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + (yC - yT).toFixed(1) + '" fill="' + COLOR_TIGRE + '"/>' +
+      '<rect x="' + x0 + '" y="' + yC.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + (H - padB - yC).toFixed(1) + '" fill="' + COLOR_CENTRAL + '"/>' +
+      '<rect x="' + x0 + '" y="' + yT.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + (H - padB - yT).toFixed(1) + '" fill="transparent"/></g>';
+    html += '<text x="' + cx.toFixed(1) + '" y="' + (yT - 6).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1F241F">' + mill(v) + '</text>';
+    html += '<text x="' + cx.toFixed(1) + '" y="' + (H - padB + 30) + '" text-anchor="middle" font-size="10" fill="#8B8E85">' + cant[w] + ' días</text>';
+  });
+  svg.innerHTML = html;
+  const primero = historial.find(mes => calcularMes(mes).ultimoAlgo >= 0);
+  document.getElementById('semana-sub').textContent =
+    'Central + Tigre, en pesos de ' + MESES_LARGO[refM - 1] + ' ' + refY + (primero ? ', desde ' + mesLabel(primero.fecha) : '') + '.';
+  const [uy, um] = ultimoPublicado.split('-').map(Number);
+  document.getElementById('semana-nota').innerHTML =
+    '<span style="color:' + COLOR_CENTRAL + ';">■</span> Central <span style="color:' + COLOR_TIGRE + '; margin-left: 0.6rem;">■</span> Tigre<br>' +
+    'Inflación del INDEC hasta ' + MESES_LARGO[um - 1] + ' ' + uy +
+    (estimados ? '; los ' + (estimados === 1 ? 'último mes, estimado' : estimados + ' meses siguientes, estimados') + ' con ' +
+      (interanual !== null ? String(interanual).replace('.', ',') + '% interanual' : estimada.toFixed(1).replace('.', ',') + '% por mes') : '') + '.';
 }
 
 // -- torta: cuánto aportó cada casino a lo recaudado en el mes --
@@ -1476,7 +1596,7 @@ try {
 // promedios, historial y gráfico se abren como se dejaron la última vez
 // (en este aparato). Si nunca se tocaron: abiertos en PC, cerrados en el celular.
 const anchaDeEntrada = window.matchMedia('(min-width: 1180px)').matches;
-[['det-promedios', anchaDeEntrada], ['det-historial', anchaDeEntrada]].forEach(([id, porDefecto]) => {
+[['det-promedios', anchaDeEntrada], ['det-semana', anchaDeEntrada], ['det-historial', anchaDeEntrada]].forEach(([id, porDefecto]) => {
   const det = document.getElementById(id);
   const clave = 'caja_casinos_abierto_' + id;
   let guardado = null;
@@ -1490,6 +1610,7 @@ const anchaDeEntrada = window.matchMedia('(min-width: 1180px)').matches;
 
 render();
 iniciarNube();
+actualizarIPC();
 // cuando terminan de cargar las tipografías cambian un poco los altos
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarHistorial);
 
