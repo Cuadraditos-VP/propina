@@ -1235,10 +1235,19 @@ try {
   if (v && ['1', '3', '5', '7', '10', '15', '20', 'all'].includes(v)) document.getElementById('ventana').value = v;
 } catch (e) {}
 
-if (window.matchMedia('(min-width: 1180px)').matches) {
-  document.getElementById('det-promedios').open = true;
-  document.getElementById('det-historial').open = true;
-}
+// promedios, historial y gráfico se abren como se dejaron la última vez
+// (en este aparato). Si nunca se tocaron: abiertos en PC, cerrados en el celular.
+const anchaDeEntrada = window.matchMedia('(min-width: 1180px)').matches;
+[['det-promedios', anchaDeEntrada], ['det-historial', anchaDeEntrada], ['resumen-grafico', false]].forEach(([id, porDefecto]) => {
+  const det = document.getElementById(id);
+  const clave = 'caja_casinos_abierto_' + id;
+  let guardado = null;
+  try { guardado = localStorage.getItem(clave); } catch (e) {}
+  det.open = guardado === null ? porDefecto : guardado === '1';
+  det.addEventListener('toggle', () => {
+    try { localStorage.setItem(clave, det.open ? '1' : '0'); } catch (e) {}
+  });
+});
 
 render();
 iniciarNube();
