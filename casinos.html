@@ -623,11 +623,11 @@ table.prom tr.p-comp td:first-child { font-size: 12px; color: var(--ink-mute); f
   </div>
   <div class="ventana-cuerpo">
     <div class="chart-wrap">
-      <svg id="chart" viewBox="0 0 760 300" style="width: 100%; height: auto;" role="img" aria-label="Recaudación acumulada del mes comparada con el mismo mes del año anterior"></svg>
+      <svg id="chart" viewBox="0 0 760 300" style="width: 100%; height: auto;" role="img" aria-label="Recaudación acumulada del mes, en % arriba o abajo del mismo mes del año anterior"></svg>
     </div>
     <div class="legend">
       <span><span class="swatch" style="background: var(--ink);"></span>Este año</span>
-      <span><span class="swatch" style="background: none; border-top: 2px dashed var(--ink-mute); height: 0;"></span>Año anterior</span>
+      <span><span class="swatch" style="background: none; border-top: 2px dashed var(--ink-mute); height: 0;"></span>Año anterior (base = 0%)</span>
       <span><span class="swatch" style="background: none; border-top: 2px dotted var(--gold); height: 0;"></span>Año anterior + inflación</span>
     </div>
   </div>
@@ -1197,39 +1197,72 @@ function renderPromedios(m, calc) {
 }
 
 function drawChart(monthDias, yearAgoDias, inflacion) {
+  // El año anterior es la base (0%, línea horizontal). Este año y el año
+  // anterior + inflación se muestran como % arriba o abajo de esa base,
+  // comparando lo acumulado al mismo día.
   const svg = document.getElementById('chart');
   const W = 760, H = 300, padL = 70, padR = 20, padT = 20, padB = 36;
   const innerW = W - padL - padR, innerH = H - padT - padB;
-  const ajustado = hay(inflacion) && yearAgoDias
-    ? yearAgoDias.map(v => hay(v) ? v * (1 + inflacion / 100) : null)
-    : null;
-  const allVals = monthDias.concat(yearAgoDias || [], ajustado || []).filter(hay);
-  const maxV = Math.max(...allVals, 1);
-  const x = i => padL + (i / 30) * innerW;
-  const y = v => padT + innerH - (v / maxV) * innerH;
-  function pathFor(arr) {
-    let d = '', started = false;
-    for (let i = 0; i < 31; i++) {
-      if (!hay(arr[i])) continue;
-      d += (started ? ' L ' : 'M ') + x(i).toFixed(1) + ' ' + y(arr[i]).toFixed(1);
-      started = true;
-    }
-    return d;
-  }
+  const tiene = v => v !== null && v !== undefined && v !== '';
   const gridColor = '#D8D6CD', inkColor = '#1F241F', muteColor = '#5B5E56', goldColor = '#93701F';
-  let grid = '';
-  for (let s = 0; s <= 4; s++) {
-    const v = (maxV / 4) * s, yy = y(v);
-    grid += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yy.toFixed(1) + '" stroke="' + gridColor + '" stroke-width="1"/>';
-    grid += '<text x="' + (padL - 10) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + muteColor + '">' + (v >= 1e6 ? (v / 1e6).toFixed(0) + 'M' : Math.round(v / 1000) + 'k') + '</text>';
-  }
+  const x = i => padL + (i / 30) * innerW;
+
+  let xLabels = '';
   [1, 5, 10, 15, 20, 25, 30].forEach(d => {
-    grid += '<text x="' + x(d - 1).toFixed(1) + '" y="' + (H - padB + 18) + '" text-anchor="middle" font-size="11" fill="' + muteColor + '">' + d + '</text>';
+    xLabels += '<text x="' + x(d - 1).toFixed(1) + '" y="' + (H - padB + 18) + '" text-anchor="middle" font-size="11" fill="' + muteColor + '">' + d + '</text>';
   });
-  svg.innerHTML = grid +
-    '<path d="' + pathFor(yearAgoDias || []) + '" fill="none" stroke="' + muteColor + '" stroke-width="2" stroke-dasharray="5 4"/>' +
-    (ajustado ? '<path d="' + pathFor(ajustado) + '" fill="none" stroke="' + goldColor + '" stroke-width="2" stroke-dasharray="1.5 4"/>' : '') +
-    '<path d="' + pathFor(monthDias) + '" fill="none" stroke="' + inkColor + '" stroke-width="2.5"/>';
+
+  const hayBase = yearAgoDias && yearAgoDias.some(tiene);
+  if (!hayBase) {
+    svg.innerHTML = xLabels +
+      '<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle" font-size="13" fill="' + muteColor + '">Sin el mismo mes del año anterior para comparar</text>';
+    return;
+  }
+
+  // % de este año respecto del año anterior, día por día
+  const rel = [];
+  for (let i = 0; i < 31; i++) {
+    const base = tiene(monthDias[i]) ? valorEnDia(yearAgoDias, i) : null;
+    rel[i] = (base !== null && base !== undefined && base > 0) ? Number(monthDias[i]) / base - 1 : null;
+  }
+  const inf = tiene(inflacion) ? inflacion / 100 : null;
+
+  // escala vertical: siempre incluye el 0 (año anterior) y la inflación
+  const vals = rel.filter(v => v !== null).concat([0], inf !== null ? [inf] : []);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 0.1) { const c = (hi + lo) / 2; lo = c - 0.05; hi = c + 0.05; }
+  const pasos = [0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5];
+  const paso = pasos.find(p => (hi - lo) / p <= 6) || 10;
+  lo = Math.floor(lo / paso - 0.2) * paso;
+  hi = Math.ceil(hi / paso + 0.2) * paso;
+  const y = v => padT + innerH - ((v - lo) / (hi - lo)) * innerH;
+  const pct = v => {
+    const n = Math.round(v * 100);
+    return n === 0 ? '0%' : (n > 0 ? '+' : '−') + Math.abs(n) + '%';
+  };
+
+  let grid = '';
+  for (let k = Math.round(lo / paso); k <= Math.round(hi / paso); k++) {
+    const v = k * paso, yy = y(v);
+    if (k === 0) continue; // la línea del 0 es la del año anterior
+    grid += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yy.toFixed(1) + '" stroke="' + gridColor + '" stroke-width="1"/>';
+    grid += '<text x="' + (padL - 10) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + muteColor + '">' + pct(v) + '</text>';
+  }
+  const y0 = y(0);
+  grid += '<text x="' + (padL - 10) + '" y="' + (y0 + 4).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="600" fill="' + muteColor + '">0%</text>';
+
+  let d = '', started = false;
+  for (let i = 0; i < 31; i++) {
+    if (rel[i] === null) continue;
+    d += (started ? ' L ' : 'M ') + x(i).toFixed(1) + ' ' + y(rel[i]).toFixed(1);
+    started = true;
+  }
+
+  svg.innerHTML = grid + xLabels +
+    '<line x1="' + padL + '" y1="' + y0.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y0.toFixed(1) + '" stroke="' + muteColor + '" stroke-width="2" stroke-dasharray="5 4"/>' +
+    (inf !== null ? '<line x1="' + padL + '" y1="' + y(inf).toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y(inf).toFixed(1) + '" stroke="' + goldColor + '" stroke-width="2" stroke-dasharray="1.5 4"/>' +
+      '<text x="' + (W - padR) + '" y="' + (y(inf) - 6).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + goldColor + '">' + pct(inf) + '</text>' : '') +
+    (d ? '<path d="' + d + '" fill="none" stroke="' + inkColor + '" stroke-width="2.5"/>' : '');
 }
 
 // -- promedio de cada día de la semana, en pesos de hoy --
